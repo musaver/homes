@@ -37,10 +37,14 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [mapCenter, setMapCenter] = useState({ lat: 25.2048, lng: 55.2708 }); // Dubai coordinates
   
   // Google Maps refs
   const addressInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<any>(null);
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
 
   // Check authentication and load cart
   useEffect(() => {
@@ -73,16 +77,38 @@ export default function CheckoutPage() {
     try {
       const response = await fetch('/api/user/profile');
       if (response.ok) {
-        const userData = await response.json();
+        const data = await response.json();
+        const userData = data.profile || data; // Handle both nested and direct response
+        console.log('Fetched user profile:', userData);
+        
+        // Auto-fill form fields from user data
         setPhone(userData.phone || '');
         setAddress(userData.address || '');
         setCity(userData.city || '');
         setState(userData.state || '');
         setPostalCode(userData.postalCode || '');
+        
+        // If user has address, try to geocode it to center the map
+        if (userData.address && googleMapsLoaded) {
+          geocodeAddress(userData.address);
+        }
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
     }
+  };
+
+  // Geocode address to get coordinates
+  const geocodeAddress = (address: string) => {
+    if (!window.google) return;
+    
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ address }, (results: any, status: any) => {
+      if (status === 'OK' && results[0]) {
+        const location = results[0].geometry.location;
+        setMapCenter({ lat: location.lat(), lng: location.lng() });
+      }
+    });
   };
 
   // Initialize Google Maps Autocomplete
@@ -93,7 +119,7 @@ export default function CheckoutPage() {
       addressInputRef.current,
       {
         types: ['address'],
-        componentRestrictions: { country: 'us' }, // Restrict to US addresses
+        componentRestrictions: { country: 'ae' }, // Restrict to UAE addresses
       }
     );
 
@@ -101,6 +127,12 @@ export default function CheckoutPage() {
       const place = autocomplete.getPlace();
       if (place.formatted_address) {
         setAddress(place.formatted_address);
+        
+        // Update map center if place has geometry
+        if (place.geometry && place.geometry.location) {
+          const location = place.geometry.location;
+          setMapCenter({ lat: location.lat(), lng: location.lng() });
+        }
         
         // Parse address components
         if (place.address_components) {
@@ -110,10 +142,10 @@ export default function CheckoutPage() {
           
           place.address_components.forEach((component: any) => {
             const types = component.types;
-            if (types.includes('locality')) {
+            if (types.includes('locality') || types.includes('administrative_area_level_2')) {
               city = component.long_name;
             } else if (types.includes('administrative_area_level_1')) {
-              state = component.short_name;
+              state = component.long_name;
             } else if (types.includes('postal_code')) {
               postalCode = component.long_name;
             }
@@ -129,6 +161,72 @@ export default function CheckoutPage() {
     autocompleteRef.current = autocomplete;
   };
 
+  // Initialize Google Map
+  const initializeMap = () => {
+    if (!window.google || !showMap) return;
+
+    const mapElement = document.getElementById('google-map');
+    if (!mapElement) return;
+
+    const map = new window.google.maps.Map(mapElement, {
+      center: mapCenter,
+      zoom: 13,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+    });
+
+    const marker = new window.google.maps.Marker({
+      position: mapCenter,
+      map: map,
+      draggable: true,
+      title: 'Drag to select your location',
+    });
+
+    // Handle marker drag
+    marker.addListener('dragend', () => {
+      const position = marker.getPosition();
+      if (position) {
+        const lat = position.lat();
+        const lng = position.lng();
+        setMapCenter({ lat, lng });
+        
+        // Reverse geocode to get address
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+          if (status === 'OK' && results[0]) {
+            setAddress(results[0].formatted_address);
+            
+            // Parse address components
+            if (results[0].address_components) {
+              let city = '';
+              let state = '';
+              let postalCode = '';
+              
+              results[0].address_components.forEach((component: any) => {
+                const types = component.types;
+                if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+                  city = component.long_name;
+                } else if (types.includes('administrative_area_level_1')) {
+                  state = component.long_name;
+                } else if (types.includes('postal_code')) {
+                  postalCode = component.long_name;
+                }
+              });
+              
+              setCity(city);
+              setState(state);
+              setPostalCode(postalCode);
+            }
+          }
+        });
+      }
+    });
+
+    mapRef.current = map;
+    markerRef.current = marker;
+  };
+
   // Handle Google Maps script load
   const handleGoogleMapsLoad = () => {
     setGoogleMapsLoaded(true);
@@ -139,8 +237,27 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (googleMapsLoaded) {
       initializeAutocomplete();
+      // Re-fetch user profile to center map if user has address
+      if (session?.user) {
+        fetchUserProfile();
+      }
     }
-  }, [googleMapsLoaded]);
+  }, [googleMapsLoaded, session]);
+
+  // Initialize map when showMap or mapCenter changes
+  useEffect(() => {
+    if (googleMapsLoaded && showMap) {
+      setTimeout(() => initializeMap(), 100); // Small delay to ensure DOM is ready
+    }
+  }, [googleMapsLoaded, showMap, mapCenter]);
+
+  // Update marker position when mapCenter changes
+  useEffect(() => {
+    if (markerRef.current && mapRef.current) {
+      markerRef.current.setPosition(mapCenter);
+      mapRef.current.setCenter(mapCenter);
+    }
+  }, [mapCenter]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -339,6 +456,92 @@ export default function CheckoutPage() {
                               <i className="fas fa-map-marker-alt me-1"></i>
                               Start typing and select from suggestions
                             </small>
+                            
+                            <div className="mt-2">
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary btn-sm"
+                                onClick={() => setShowMap(!showMap)}
+                              >
+                                <i className={`fas ${showMap ? 'fa-eye-slash' : 'fa-map-marked-alt'} me-1`}></i>
+                                {showMap ? 'Hide Map' : 'Show Map & Pin Location'}
+                              </button>
+                            </div>
+                            
+                            {showMap && (
+                              <div className="map-container mt-3">
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                  <small className="text-muted">
+                                    <i className="fas fa-hand-pointer me-1"></i>
+                                    Drag the pin to select your exact location
+                                  </small>
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline-secondary btn-sm"
+                                    onClick={() => {
+                                      if (navigator.geolocation) {
+                                        navigator.geolocation.getCurrentPosition(
+                                          (position) => {
+                                            const { latitude, longitude } = position.coords;
+                                            setMapCenter({ lat: latitude, lng: longitude });
+                                            
+                                            // Reverse geocode to get address
+                                            if (window.google) {
+                                              const geocoder = new window.google.maps.Geocoder();
+                                              geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results: any, status: any) => {
+                                                if (status === 'OK' && results[0]) {
+                                                  setAddress(results[0].formatted_address);
+                                                  
+                                                  // Parse address components
+                                                  if (results[0].address_components) {
+                                                    let city = '';
+                                                    let state = '';
+                                                    let postalCode = '';
+                                                    
+                                                    results[0].address_components.forEach((component: any) => {
+                                                      const types = component.types;
+                                                      if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+                                                        city = component.long_name;
+                                                      } else if (types.includes('administrative_area_level_1')) {
+                                                        state = component.long_name;
+                                                      } else if (types.includes('postal_code')) {
+                                                        postalCode = component.long_name;
+                                                      }
+                                                    });
+                                                    
+                                                    setCity(city);
+                                                    setState(state);
+                                                    setPostalCode(postalCode);
+                                                  }
+                                                }
+                                              });
+                                            }
+                                          },
+                                          (error) => {
+                                            console.error('Error getting current location:', error);
+                                            alert('Unable to get your current location. Please check your browser permissions.');
+                                          }
+                                        );
+                                      } else {
+                                        alert('Geolocation is not supported by this browser.');
+                                      }
+                                    }}
+                                  >
+                                    <i className="fas fa-crosshairs me-1"></i>
+                                    Use My Location
+                                  </button>
+                                </div>
+                                <div
+                                  id="google-map"
+                                  style={{
+                                    height: '300px',
+                                    width: '100%',
+                                    borderRadius: '8px',
+                                    border: '1px solid #dee2e6'
+                                  }}
+                                />
+                              </div>
+                            )}
                           </div>
 
                           <div className="col-md-4 mb-3">
