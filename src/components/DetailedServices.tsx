@@ -7,7 +7,7 @@ const services = [
   {
     id: '01',
     icon: 'fa-solid fa-faucet',
-    title: 'Plumbing Services 2',
+    title: 'Plumbing Services',
     description: 'From leaky taps to blocked drains, our certified plumbers ensure quick, clean, and reliable solutions. We also handle toilet repairs, water heater installations, and pump fixes.'
   },
   {
@@ -43,7 +43,7 @@ const services = [
   {
     id: '07',
     icon: 'fa-solid fa-screwdriver-wrench',
-    title: 'Handyman Service',
+    title: 'Handyman Services',
     description: 'Need a hand around the house? Our handyman services cover everything from mounting and drilling to curtain, light, and furniture installations. Pay hourly or per task.'
   }
 ]
