@@ -1,0 +1,356 @@
+/* Process box ---------------------------------- */
+.process-box {
+    &-wrap {
+        &:nth-child(even) {
+            margin-top: 70px;
+
+            .process-box .box-icon::before {
+                transform: scaleY(1);
+                top: -6%;
+                right: -34%;
+
+                @include xl {
+                    right: -40%;
+                }
+            }
+        }
+
+        &:last-child .process-box .box-icon::before {
+            display: none;
+        }
+
+        @include lg {
+            margin-top: 40px !important;
+        }
+    }
+
+    position: relative;
+    z-index: 2;
+    text-align: center;
+
+    .box-number {
+        text-transform: uppercase;
+        margin-bottom: 10px;
+        margin-top: -0.45em;
+    }
+
+    .box-title {
+        font-weight: 500;
+        margin-bottom: 12px;
+    }
+
+    .box-img {
+        margin: 0 auto 30px auto;
+        max-width: 257px;
+        aspect-ratio: 16 / 16;
+    }
+
+    .box-icon {
+        height: 100px;
+        width: 100px;
+        text-align: center;
+        line-height: 100px;
+        border: 1px solid var(--th-border-color);
+        border-radius: 50%;
+        font-size: 35px;
+        color: var(--theme-color);
+        margin: 0 auto 29px;
+        transition: all .4s;
+
+        i {
+
+            transition: inherit;
+        }
+
+        &:before {
+            content: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjY5IiB2aWV3Qm94PSIwIDAgMTgwIDY5IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBkPSJNMS44MjMxMyA2MS4zNzAxQzk1Ljg2ODggOTEuODA2NSA4OC44MjkzIC0yMC4xNTQ4IDE3OC4wODYgNi41Mzc4OSIgc3Ryb2tlPSIjRDhEREUxIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K);
+            color: var(--white-color);
+            position: absolute;
+            z-index: -1;
+            right: -30%;
+            transform: rotate(35deg);
+            top: 12%;
+            transition: all .4s;
+
+            @include xl {
+                right: -35%;
+            }
+
+            @include lg {
+                display: none;
+            }
+        }
+
+        @include lg {
+            left: 22%;
+        }
+    }
+
+    &:hover {
+        .box-icon {
+            background-color: var(--theme-color);
+            color: var(--white-color);
+
+            i {
+                transform: rotateY(180deg);
+            }
+        }
+    }
+}
+
+
+/* Process Card ---------------------------------- */
+.process-card {
+    position: relative;
+    z-index: 2;
+    padding: 80px 0 0 0;
+    text-align: center;
+
+    .box-content {
+        background-color: $white-color;
+        box-shadow: 0px 10px 50px rgba(0, 0, 0, 0.08);
+        border-radius: 30px;
+        padding: 30px 30px 40px 30px;
+    }
+
+    .box-top {
+        padding: 75px 0 0 0;
+    }
+
+    .box-number {
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        margin-top: -0.45em;
+    }
+
+    .box-title {
+        margin-bottom: 12px;
+    }
+
+    .box-icon {
+        position: absolute;
+        top: 0;
+        left: calc(50% - 69px);
+        height: 160px;
+        width: 138px;
+        text-align: center;
+        line-height: 150px;
+        filter: drop-shadow(0px 10px 50px rgba(0, 0, 0, 0.08));
+        z-index: 2;
+
+        &:before {
+            content: '';
+            background-color: $white-color;
+            position: absolute;
+            inset: 0;
+            clip-path: path("M14.9541 124.669L53.9541 147.278C63.2594 152.672 74.7406 152.672 84.0459 147.278L123.046 124.669C132.302 119.303 138 109.414 138 98.7148V53.2852C138 42.5861 132.302 32.6968 123.046 27.331L84.0459 4.72227C74.7406 -0.672132 63.2594 -0.67213 53.9541 4.72227L14.9541 27.331C5.69794 32.6968 0 42.5861 0 53.2852V98.7148C0 109.414 5.69794 119.303 14.9541 124.669Z");
+            z-index: -1;
+        }
+    }
+
+    &:hover {
+        .box-icon {
+            img {
+                transform: rotateY(180deg);
+            }
+        }
+    }
+}
+
+@include lg {
+    .process-card {
+        .box-content {
+            padding: 30px 10px;
+        }
+    }
+}
+
+@include sm {
+    .process-card {
+        .box-content {
+            padding: 30px;
+        }
+    }
+}
+
+/* Process Card ---------------------------------- */
+.process-card2 {
+    &-wrap {
+        display: flex;
+        justify-content: space-between;
+        @include lg {
+            gap: 20px;
+        }
+        @include md {
+            flex-wrap: wrap;
+            gap: 40px;
+        }
+        @include sm {
+            justify-content: center;
+        }
+    }
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    max-width: 285px;
+    &:after {
+        content: url('data:image/svg+xml,<svg width="231" height="20" viewBox="0 0 231 20" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="16" y1="9.9126" x2="216" y2="9.9126" stroke="%23068FFF" stroke-dasharray="4 4"/><path d="M230.092 9.87538L216.043 18.3208L215.754 1.93077L230.092 9.87538Z" fill="%23068FFF"/><circle cx="8.5" cy="9.9126" r="7" stroke="%23068FFF" stroke-width="3"/></svg>');
+        position: absolute;
+        top: 29%;
+        left: 98%;
+        z-index: -1;
+        @include xl {
+            left: 82%;
+        }
+        @include lg {
+            left: 48%;
+        }
+        @include md {
+            left: 82%;
+        }
+        @include sm {
+            display: none;
+        }
+    }
+    @include md {
+        &:nth-child(even) {
+            &:after {
+                display: none;
+            }
+        }
+    }
+    &:last-child {
+        &:after {
+            display: none;
+        }
+    }
+    .box-img {
+        width: 188px;
+        height: 210px;
+        margin: 0 auto 30px auto;
+        padding: 8px;
+        position: relative;
+        z-index: 2;
+        background-color: $theme-color;
+        clip-path: path("M100.25 5.13429C96.3825 2.90138 91.6175 2.90137 87.75 5.13429L9.41541 50.3608C5.54789 52.5937 3.16541 56.7203 3.16541 61.1861V151.639C3.16541 156.105 5.54789 160.231 9.4154 162.464L87.75 207.691C91.6175 209.924 96.3825 209.924 100.25 207.691L178.585 162.464C182.452 160.231 184.835 156.105 184.835 151.639V61.1861C184.835 56.7203 182.452 52.5937 178.585 50.3608L100.25 5.13429Z");
+        img {
+            margin-top: 1px;
+            clip-path: path("M81 1.95413C84.094 0.167805 87.906 0.167806 91 1.95413L166.169 45.3532C169.263 47.1396 171.169 50.4408 171.169 54.0135V140.812C171.169 144.384 169.263 147.686 166.169 149.472L91 192.871C87.906 194.657 84.094 194.657 81 192.871L5.83054 149.472C2.73653 147.686 0.830544 144.384 0.830544 140.812V54.0135C0.830544 50.4408 2.73653 47.1396 5.83054 45.3532L81 1.95413Z");
+        }
+    }
+    .box-title {
+        margin-bottom: 13px;
+    }
+}
+
+/* Process 2 ---------------------------------- */
+.process-box-2-wrap.background-image {
+    background-position: top left;
+    background-size: auto;
+}
+
+.process-box-2-wrap {
+    padding: 16px 0 65px 30px;
+
+    @include md {
+        padding: 16px 0 15px 30px;
+    }
+
+    @include sm {
+        padding: 16px 0 85px 30px;
+    }
+
+    @media (max-width: 400px) {
+        padding: 16px 0 70px 16px;
+    }
+
+    @include vxs {
+        padding: 16px 0 20px 16px;
+    }
+
+    .box-count-title {
+        font-size: 36px;
+        font-weight: 700;
+        color: var(--th-border-color);
+        margin-bottom: 20px;
+    }
+}
+
+.process-box-2 {
+    display: flex;
+    gap: 30px;
+
+    &:hover .box-icon img {
+        transform: rotateY(-180deg);
+    }
+
+    .box-icon {
+        margin-top: 30px;
+    }
+
+    .content {
+        background: var(--smoke-color2);
+        padding: 30px;
+        border-radius: 20px;
+
+        @include vxs {
+            padding: 20px;
+        }
+
+        flex: 1;
+
+        .box-title {
+            margin-bottom: 12px;
+            @include md {
+                font-size: 19px;
+                margin-bottom: 10px;
+            }
+            @include vxs {
+                margin-bottom: 10px;
+                line-height: 1.2;
+            }
+        }
+    }
+}
+
+/* Process 3 ---------------------------------- */
+.process-3-shape-4 {
+    right: 50px;
+    bottom: 100px;
+
+    @media (max-width: 1650px) {
+        width: 60px;
+        right: 10px;
+    }
+    @include lg {
+        display: none;
+    }
+}
+.process-3-shape-1 {
+    top: 100px;
+    left: 110px;   
+     @media (max-width: 1700px) {
+        width: 60px;
+        left: 80px;
+    }
+     @media (max-width: 1670px) {
+        left: 10px;
+    }
+     @media (max-width: 1470px) {
+        top: 30px;
+    }
+    @include lg {
+        display: none;
+    }
+}
+
+.process-box.style-3 {
+    .box-icon {
+        color: var(--theme-color2);
+    }
+
+    &:hover .box-icon {
+        color: var(--title-color);
+        background-color: var(--theme-color2);
+    }
+}

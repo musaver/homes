@@ -1,0 +1,231 @@
+.breadcumb-menu {
+    max-width: 100%;
+    padding: 0;
+    margin: 25px 0 -0.5em 0;
+    list-style-type: none;
+    position: relative;
+
+    li {
+        display: inline-block;
+        margin-right: 3px;
+        padding-right: 3px;
+        list-style: none;
+        position: relative;
+
+        &:after {
+            content: "\f054";
+            position: relative;
+            margin-left: 6px;
+            font-weight: 500;
+            font-size: 15px;
+            color: inherit;
+            font-family: $icon-font;
+        }
+
+        &:last-child {
+            padding-right: 0;
+            margin-right: 0;
+            color: $title-color;
+
+            &:after {
+                display: none;
+            }
+        }
+
+        &:first-child {
+
+            &,
+            a,
+            span {
+                color: $theme-color;
+            }
+        }
+    }
+
+    li,
+    a,
+    span {
+        white-space: normal;
+        color: inherit;
+        word-break: break-word;
+        font-weight: 600;
+        font-size: 20px;
+        color: $title-color;
+    }
+}
+
+.breadcumb-title {
+    margin: -0.20em 0 -0.18em 0;
+    line-height: 1.1;
+    font-size: 84px;
+    font-weight: 600;
+}
+
+@media (min-width: 1300px) {
+    .breadcumb-title {
+        font-size: 84px;
+        line-height: 1.11;
+    }
+}
+
+.breadcumb-wrapper {
+    background-color: var(--smoke-color2);
+    padding: 295px 0 150px 0;
+    text-align: start;
+    position: relative;
+    z-index: 2;
+    &:has(.breadcrumb-bottom-shape) {
+        padding: 295px 0 210px;
+        margin-bottom: -10px;
+        @include md {
+            margin-bottom: -20px;
+            padding: 275px 0 185px;
+        }
+        @include sm {
+            padding: 255px 0 175px;
+        }
+        @include xs{
+            padding: 215px 0 155px;
+        }
+        @include vxs{
+            padding: 210px 0 140px;
+        }
+    }
+    &:after {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        height: 100%;
+        width: 100%;
+        background-color: var(--black-color);
+        opacity: .1;
+        z-index: -1;
+    }
+
+    .breadcrumb-bottom-shape {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -4px;
+        z-index: 1;
+        height: 68px;
+
+        img {
+            height: 100%;
+            width: 100%;
+            object-fit: cover;
+        }
+    }
+
+    .breadcrumb-left {
+        top: 37%;
+        left: 7%;
+    }
+
+    .breadcrumb-right {
+        bottom: 19%;
+        left: 50%;
+    }
+}
+
+@media (max-width: 1800px) {
+    .breadcumb-wrapper .breadcrumb-left {
+        left: 3%;
+    }
+}
+
+@media (max-width: 1600px) {
+    .breadcumb-wrapper .breadcrumb-left {
+        width: 69px;
+        top: 26%;
+    }
+}
+
+@include xl {
+    .breadcumb-wrapper {
+        padding: 280px 0 140px 0;
+
+        .breadcrumb-left {
+            width: 50px;
+            top: 28%;
+        }
+    }
+}
+
+@include lg {
+    .breadcumb-wrapper {
+        .breadcrumb-left {
+            display: none;
+        }
+    }
+
+    .breadcumb-menu {
+        margin: 15px 0 -0.5em 0;
+
+        li,
+        a,
+        span {
+            font-size: 18px;
+        }
+    }
+
+    .breadcumb-title {
+        font-size: 64px;
+    }
+
+}
+
+@include sm {
+    .breadcumb-title {
+        font-size: 40px;
+    }
+    .breadcumb-wrapper {
+        padding: 250px 0 110px 0;
+    }
+}
+
+@include xs {
+    .breadcumb-wrapper {
+        .breadcrumb-right {
+            bottom: 15%;
+            left: 50%;
+            width: 39px;
+        }
+    }
+
+    .breadcumb-title {
+        font-size: 34px;
+    }
+}
+
+@include vxs {
+    .breadcumb-wrapper {
+        padding: 220px 0 145px 0;
+    }
+}
+
+@media (max-width: 400px) {
+    .breadcumb-wrapper .breadcrumb-bottom-shape {
+        bottom: -8px;
+    }
+}
+
+/*-- Unit Test breadcrumb  Start-----*/
+.breadcumb-wrapper.th-breadcumb {
+	background-color: var(--smoke-color2);
+	text-align: start;
+	position: relative;
+	z-index: 2;
+	padding: 207px 0 120px;
+    @include md {
+        padding: 180px 0 100px;
+    }
+    @include sm {
+        padding: 155px 0 80px;
+    }
+    @include xs {
+        padding: 133px 0 65px;
+    }
+}
+/*-- Unit Test breadcrumb  End-----*/

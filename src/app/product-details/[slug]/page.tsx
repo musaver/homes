@@ -1,0 +1,1254 @@
+'use client';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import CurrencySymbol from '@/components/CurrencySymbol';
+import LoadingSpinner from '@/components/LoadingSpinner';
+
+import { normalizeVariationAttributes } from '../../../utils/jsonUtils';
+import { addToCart, clearCart, type CartItem } from '../../../utils/cart';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+
+/* ───────────────────────────────────────────────────────────
+   Utilities
+   ────────────────────────────────────────────────────────── */
+
+/** Recursively JSON-parse *encoded* data until it is no longer a string. */
+const deepParseJSON = (value: any, maxDepth = 3) => {
+  let parsed = value;
+  let depth  = 0;
+
+  while (typeof parsed === 'string' && depth < maxDepth) {
+    try {
+      parsed = JSON.parse(parsed);
+      depth += 1;
+    } catch {
+      break;            // stop when the string isn't valid JSON
+    }
+  }
+  return parsed;
+};
+
+const formatPrice = (price: string | number) => {
+  const num = Number(price);
+  return `${String.fromCharCode(0xe001)} ${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+/* ───────────────────────────────────────────────────────────
+   Types
+   ────────────────────────────────────────────────────────── */
+
+interface ProductAddon {
+  id: string;
+  productId: string;
+  addonId: string;
+  price: string;
+  isRequired: boolean;
+  sortOrder: number;
+  isActive: boolean;
+  addonTitle: string;
+  addonPrice: string;
+  addonDescription?: string;
+  addonImage?: string;
+  addonSortOrder: number;
+  addonGroupId?: string;
+  groupTitle?: string;
+  groupDescription?: string;
+  groupSortOrder?: number;
+}
+
+interface ProductData {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  shortDescription?: string;
+  sku?: string;
+  price: string;
+  comparePrice?: string;
+  costPrice?: string;
+  images?: any;
+  banner?: string;
+  categoryId?: string;
+  subcategoryId?: string;
+  tags?: any;
+  weight?: string;
+  dimensions?: any;
+  isFeatured: boolean;
+  isActive: boolean;
+  isDigital: boolean;
+  requiresShipping: boolean;
+  taxable: boolean;
+  metaTitle?: string;
+  metaDescription?: string;
+  productType: string;
+  variationAttributes?: any;
+  createdAt: string;
+  updatedAt: string;
+  categoryName?: string;
+  addons?: ProductAddon[];
+}
+
+/* ───────────────────────────────────────────────────────────
+   Variation Selector
+   ────────────────────────────────────────────────────────── */
+
+const VariationSelector: React.FC<{
+  variationAttributes: any;        // accepts string *or* array
+  productType: string;
+  basePrice: string;
+  product: ProductData;
+  onPriceChange?: (price: number) => void;
+  onVariationComplete?: (isComplete: boolean) => void;
+  onSelectionChange?: (selections: Record<string, string>) => void;
+  onAddToCart?: () => void;
+}> = ({ variationAttributes, productType, basePrice, product, onPriceChange, onVariationComplete, onSelectionChange, onAddToCart }) => {
+  /** Make sure we *always* work with an array using our normalized function */
+  const attrs = useMemo<any[]>(() => {
+    const normalized = normalizeVariationAttributes(variationAttributes);
+    
+    // Debug: log the parsed attributes to understand structure
+    if (normalized.length > 0) {
+      console.log('Normalized variation attributes:', normalized);
+      // Log the first attribute's values to see the structure
+      if (normalized[0]?.values?.length > 0) {
+        console.log('Sample variation value:', normalized[0].values[0]);
+      }
+    }
+    
+    return normalized;
+  }, [variationAttributes]);
+
+  const [selected, setSelected] = useState<Record<string, string>>({});
+  const [dynamicPrice, setDynamicPrice] = useState<number>(parseFloat(basePrice) || 0);
+  const [priceLoading, setPriceLoading] = useState<boolean>(false);
+
+  /* Build initial state when attributes arrive */
+  useEffect(() => {
+    if (attrs.length) {
+      const init: Record<string, string> = {};
+      attrs.forEach((a) => (init[a.name] = ''));  // Use attribute name instead of slug
+      setSelected(init);
+    }
+  }, [attrs]);
+
+  /* Helpers */
+  const change = (attributeName: string, value: string) => {
+    setSelected((s) => ({ ...s, [attributeName]: value }));
+  };
+  
+  const selectedCount   = Object.values(selected).filter(Boolean).length;
+  const allChosen       = attrs.length > 0 && attrs.every((a) => selected[a.name]);
+  const progressPercent = attrs.length ? (selectedCount / attrs.length) * 100 : 0;
+
+  /* Calculate dynamic price based on selected variations */
+  useEffect(() => {
+    const fetchVariantPrice = async () => {
+      if (allChosen) {
+        setPriceLoading(true);
+        
+        // Declare variables in outer scope so they're available in catch block
+        let productId: string | undefined;
+        const variationCombination: Record<string, string> = {};
+        
+        try {
+          // Get the product ID from the current product context
+          productId = product?.id;
+          if (!productId) {
+            console.error('🚨 Product ID not available! Product object:', product);
+            setPriceLoading(false);
+            return;
+          }
+          
+          console.log('✅ Product ID available:', productId);
+
+          // Prepare the variation combination for the API call using attribute names
+          attrs.forEach((attr) => {
+            const selectedValue = selected[attr.name];
+            if (selectedValue) {
+              // Use the selected value directly since we're already storing the actual value
+              variationCombination[attr.name] = selectedValue;
+            }
+          });
+
+          console.log('🔍 Debug - Current selected state:', selected);
+          console.log('🔍 Debug - Attributes structure:', attrs);
+          console.log('🔍 Debug - Variation combination being sent:', variationCombination);
+          console.log('🔍 Debug - Product ID:', productId);
+          
+          // Also test if we can reach our debug endpoint
+          console.log('🔍 Debug - Testing debug endpoint...');
+          fetch(`/api/debug/variants/${productId}`)
+            .then(res => res.json())
+            .then(data => console.log('🔍 Debug endpoint response:', data))
+            .catch(err => console.log('🔍 Debug endpoint error:', err));
+
+          // Make API call to get variant price
+          const response = await fetch('/api/products/variant-price', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              productId: productId,
+              variationCombination: variationCombination
+            })
+          });
+
+          const responseData = await response.json();
+          console.log('🔄 API Response:', responseData);
+          
+          if (response.ok) {
+            if (responseData.success) {
+              const variantPrice = parseFloat(responseData.price) || parseFloat(basePrice) || 0;
+              console.log(`✅ Successfully fetched variant price: AED ${variantPrice} for combination:`, variationCombination);
+              console.log('📊 Full variant data:', responseData);
+              
+              setDynamicPrice(variantPrice);
+              onPriceChange?.(variantPrice);
+            } else {
+              console.warn('⚠️ API returned unsuccessful response:', responseData);
+              throw new Error(responseData.error || 'Variant price fetch unsuccessful');
+            }
+          } else {
+            console.error('❌ API call failed with status:', response.status, responseData);
+            throw new Error(responseData.error || `API Error: ${response.status}`);
+          }
+        } catch (error) {
+          console.error('🚨 Error fetching variant price:', error);
+          console.error('🚨 Full error details:', {
+            error: error,
+            selected: selected,
+            attrs: attrs,
+            product: product,
+            productId: productId,
+            variationCombination: variationCombination
+          });
+          // Fallback to base price if API call fails
+          const baseNum = parseFloat(basePrice) || 0;
+          setDynamicPrice(baseNum);
+          onPriceChange?.(baseNum);
+        } finally {
+          setPriceLoading(false);
+        }
+      } else {
+        // Not all variations selected, show base price
+        const baseNum = parseFloat(basePrice) || 0;
+        setDynamicPrice(baseNum);
+        onPriceChange?.(baseNum);
+        setPriceLoading(false);
+      }
+      
+      onVariationComplete?.(allChosen);
+      onSelectionChange?.(selected);
+    };
+
+    fetchVariantPrice();
+  }, [selected, allChosen, attrs, basePrice, onPriceChange, onVariationComplete, onSelectionChange, product?.id]);
+
+  const resetSelection = () => {
+    const init: Record<string, string> = {};
+    attrs.forEach((a) => (init[a.name] = ''));
+    setSelected(init);
+    // Reset to base price
+    const baseNum = parseFloat(basePrice) || 0;
+    setDynamicPrice(baseNum);
+    onPriceChange?.(baseNum);
+  };
+
+  /* Early exits */
+  if (productType !== 'variable')
+    return (
+      <div className="alert alert-info">
+        <i className="fas fa-info-circle me-2" />
+        This product is not variable.
+      </div>
+    );
+
+  if (!attrs.length)
+    return (
+      <div className="alert alert-warning">
+        <i className="fas fa-exclamation-triangle me-2" />
+        No variation attributes found for this variable product.
+      </div>
+    );
+
+  /* UI */
+  return (
+    <div className="variation-selector">
+      {/* Header */}
+
+      {/* Price Display */}
+      {priceLoading && (
+        <div className="mb-3">
+          <div className="d-flex align-items-center">
+            
+            <small className="text-muted">Calculating price...</small>
+          </div>
+        </div>
+      )}
+
+      {/* Current Price Display 
+      {allChosen && !priceLoading && (
+        <div className="mb-3 p-3 bg-success bg-opacity-10 border border-success rounded">
+          <div className="d-flex justify-content-between align-items-center">
+            <span className="fw-semibold text-success">✅ Variant Price:</span>
+                                        <span className="h5 mb-0 text-success"><CurrencySymbol /> {dynamicPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+        </div>
+      )}*/}
+
+      {/* Attribute groups */}
+      {attrs.map((attribute) => {
+        const current = selected[attribute.name] || '';
+
+        return (
+          <div key={attribute.id} className="attribute-group mb-4">
+            <div className="attribute-header mb-3">
+              <h6 className="attribute-name mb-1">
+                {attribute.name}
+                {/* <span className="text-muted ms-2">({attribute.type})</span> */}
+                {current && <span className="badge bg-primary ms-2">{current}</span>}
+              </h6>
+              {attribute.description && <small className="text-muted">{attribute.description}</small>}
+            </div>
+
+            {/* — select dropdown — */}
+            {(attribute.type === 'select' || attribute.values?.length > 5) && (
+              <select
+                className="form-select"
+                value={current}
+                onChange={(e) => change(attribute.name, e.target.value)}
+                disabled={priceLoading}
+              >
+                <option value="">Choose {attribute.name.toLowerCase()}…</option>
+                {attribute.values?.map((o: any) => (
+                  <option key={o.id} value={o.value}>
+                    {o.value}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* — colour swatches — */}
+            {attribute.type === 'color' && (
+              <div className="color-options d-flex flex-wrap gap-2">
+                {attribute.values?.map((o: any) => {
+                  const isSel = current === o.value;
+                  return (
+                    <div
+                      key={o.id}
+                      className={`color-option ${isSel ? 'selected' : ''} ${priceLoading ? 'disabled' : ''}`}
+                      onClick={() => !priceLoading && change(attribute.name, o.value)}
+                      title={o.value}
+                    >
+                      <div
+                        className="color-swatch"
+                        style={{
+                          backgroundColor : o.colorCode || '#ccc',
+                          width           : 40,
+                          height          : 40,
+                          borderRadius    : '50%',
+                          border          : isSel ? '3px solid #007bff' : '2px solid #dee2e6',
+                          cursor          : priceLoading ? 'not-allowed' : 'pointer',
+                          opacity         : priceLoading ? 0.6 : 1,
+                        }}
+                      />
+                      <small className="color-label text-center mt-1 d-block">{o.value}</small>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* — image options — */}
+            {attribute.type === 'image' && (
+              <div className="image-options d-flex flex-wrap gap-3">
+                {attribute.values?.map((o: any) => {
+                  const isSel = current === o.value;
+                  return (
+                    <div
+                      key={o.id}
+                      className={`image-option ${isSel ? 'selected' : ''} ${priceLoading ? 'disabled' : ''}`}
+                      onClick={() => !priceLoading && change(attribute.name, o.value)}
+                    >
+                      {o.image ? (
+                        <img
+                          src={o.image}
+                          alt={o.value}
+                          style={{
+                            width        : 60,
+                            height       : 60,
+                            objectFit    : 'cover',
+                            borderRadius : 8,
+                            border       : isSel ? '3px solid #007bff' : '2px solid #dee2e6',
+                            cursor       : priceLoading ? 'not-allowed' : 'pointer',
+                            opacity      : priceLoading ? 0.6 : 1,
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width        : 60,
+                            height       : 60,
+                            background   : '#f8f9fa',
+                            borderRadius : 8,
+                            display      : 'flex',
+                            alignItems   : 'center',
+                            justifyContent: 'center',
+                            border       : isSel ? '3px solid #007bff' : '2px solid #dee2e6',
+                            cursor       : priceLoading ? 'not-allowed' : 'pointer',
+                            opacity      : priceLoading ? 0.6 : 1,
+                          }}
+                        >
+                          <i className="fas fa-image text-muted" />
+                        </div>
+                      )}
+                      <small className="image-label text-center mt-1 d-block">{o.value}</small>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* — buttons / radio (default) — */}
+            {(!['select', 'color', 'image'].includes(attribute.type) && attribute.values?.length <= 5) && (
+              <div className="button-radio-options d-flex flex-wrap gap-2">
+                {attribute.values?.map((o: any) => {
+                  const isSelected = current === o.value;
+                  return (
+                    <button
+                      key={o.id}
+                      type="button"
+                      className={`btn ${isSelected ? 'btn-primary' : 'btn-outline-secondary'} ${priceLoading ? 'disabled' : ''}`}
+                      onClick={() => !priceLoading && change(attribute.name, o.value)}
+                      disabled={priceLoading}
+                      style={{
+                        borderRadius: '8px',
+                        padding: '10px 20px',
+                        fontWeight: '500',
+                        border: isSelected ? '2px solid #007bff' : '2px solid #dee2e6',
+                        backgroundColor: isSelected ? '#007bff' : '#fff',
+                        color: isSelected ? '#fff' : '#495057',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <span className="option-value">{o.value}</span>
+                      {o.description && (
+                        <small className="d-block mt-1" style={{ 
+                          opacity: 0.8,
+                          fontSize: '0.75rem'
+                        }}>
+                          {o.description}
+                        </small>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Selected badge 
+            {current && (
+              <div className="selected-indicator mt-2">
+                <small className="text-success">
+                  <i className="fas fa-check-circle me-1" />
+                  Selected:{' '}
+                  <strong>{attribute.values?.find((v: any) => v.value === current)?.value}</strong>
+                </small>
+              </div>
+            )}*/}
+          </div>
+        );
+      })}
+
+      {/* Actions and Summary */}
+      
+          {/*
+          <div className="col-md-6">
+            {!allChosen && selectedCount === 0 && (
+              <>
+                <h6 className="mb-1">Base Price:</h6>
+                <h4 className="text-muted mb-0">{formatPrice(basePrice)}</h4>
+                <small className="text-muted">Select variations to see final price</small>
+              </>
+            )}
+            {!allChosen && selectedCount > 0 && (
+              <>
+                <h6 className="mb-1">Base Price:</h6>
+                <h4 className="text-muted mb-0">{formatPrice(basePrice)}</h4>
+                <small className="text-warning">
+                  <i className="fas fa-info-circle me-1" />
+                  Select all variations ({selectedCount}/{attrs.length}) to see final price
+                </small>
+              </>
+            )}
+          </div>*/}
+          
+            {/*<button
+              type="button"
+              className="btn btn-outline-secondary me-2"
+              onClick={resetSelection}
+              disabled={priceLoading || selectedCount === 0}
+            >
+              <i className="fas fa-undo me-1" />
+              Reset
+            </button>*/}
+            <button
+              type="button"
+              className={` ${allChosen ? '' : 'btn-secondary'} th-btn`}
+              disabled={!allChosen || priceLoading}
+              onClick={() => allChosen && !priceLoading && onAddToCart?.()}
+            >
+              {/*<i className="fas fa-shopping-cart me-1" />*/}
+              {priceLoading ? 'Loading...' : 'Book Now'}
+            </button>
+    </div>
+  );
+};
+
+/* ───────────────────────────────────────────────────────────
+   Grouped Addons Selector
+   ────────────────────────────────────────────────────────── */
+
+const GroupedAddonsSelector: React.FC<{
+  addons: ProductAddon[];
+  productType: string;
+  basePrice: string;
+  onCheckoutReady?: (isReady: boolean) => void;
+  onSelectionChange?: (selectedAddons: Array<{addonId: string, title: string, price: number, quantity: number, groupTitle: string}>) => void;
+  onAddToCart?: () => void;
+}> = ({ addons, productType, basePrice, onCheckoutReady, onSelectionChange, onAddToCart }) => {
+  const [addonQuantities, setAddonQuantities] = useState<{[key: string]: number}>({});
+
+  // Group addons by group title
+  const groupedAddons = useMemo(() => {
+    const groups: { [key: string]: ProductAddon[] } = {};
+    
+    addons.forEach(addon => {
+      const groupKey = addon.groupTitle || 'Ungrouped';
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+      groups[groupKey].push(addon);
+    });
+
+    // Sort groups by group sort order, then sort addons within each group
+    const sortedGroups = Object.entries(groups)
+      .sort(([, a], [, b]) => {
+        const aSort = a[0]?.groupSortOrder || 999;
+        const bSort = b[0]?.groupSortOrder || 999;
+        return aSort - bSort;
+      })
+      .map(([groupTitle, groupAddons]) => ({
+        title: groupTitle,
+        description: groupAddons[0]?.groupDescription,
+        addons: groupAddons.sort((a, b) => a.addonSortOrder - b.addonSortOrder)
+      }));
+
+    return sortedGroups;
+  }, [addons]);
+
+  const updateAddonQuantity = (addonId: string, quantity: number) => {
+    setAddonQuantities(prev => ({
+      ...prev,
+      [addonId]: Math.max(0, quantity)
+    }));
+  };
+
+  const getAddonQuantity = (addonId: string) => addonQuantities[addonId] || 0;
+
+  // Calculate total addon price and check if any addons are selected
+  const { totalAddonPrice, hasSelectedAddons } = useMemo(() => {
+    const selected = Object.entries(addonQuantities).filter(([, qty]) => qty > 0);
+    const total = selected.reduce((sum, [addonId, qty]) => {
+      const addon = addons.find(a => a.addonId === addonId);
+      if (!addon) return sum;
+      const price = parseFloat(addon.price || addon.addonPrice);
+      return sum + (price * qty);
+    }, 0);
+    
+    return {
+      totalAddonPrice: total,
+      hasSelectedAddons: selected.length > 0
+    };
+  }, [addonQuantities, addons]);
+
+  // Notify parent when checkout readiness changes
+  useEffect(() => {
+    onCheckoutReady?.(hasSelectedAddons);
+  }, [hasSelectedAddons, onCheckoutReady]);
+
+  // Notify parent when addon selection changes
+  useEffect(() => {
+    const selectedAddons = Object.entries(addonQuantities)
+      .filter(([, qty]) => qty > 0)
+      .map(([addonId, qty]) => {
+        const addon = addons.find(a => a.addonId === addonId);
+        return {
+          addonId,
+          title: addon?.addonTitle || '',
+          price: parseFloat(addon?.price || addon?.addonPrice || '0'),
+          quantity: qty,
+          groupTitle: addon?.groupTitle || 'Ungrouped'
+        };
+      });
+    onSelectionChange?.(selectedAddons);
+  }, [addonQuantities, addons, onSelectionChange]);
+
+  const resetAddons = () => {
+    setAddonQuantities({});
+  };
+
+  // Early exit if not a group product
+  if (productType !== 'group') {
+    return null;
+  }
+
+  if (!addons || addons.length === 0) {
+    return (
+      <div className="alert alert-warning">
+        <i className="fas fa-exclamation-triangle me-2" />
+        No addons available for this group product.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grouped-addons-selector">
+      
+
+      {groupedAddons.map((group, groupIndex) => (
+        <div key={groupIndex} className="addon-group mb-4">
+          {/* Group Header */}
+          <div className="group-header mb-3">
+            <h6 className="group-title mb-1">{group.title}</h6>
+            {group.description && (
+              <small className="text-muted">{group.description}</small>
+            )}
+          </div>
+
+          {/* Group Addons */}
+          <div className="group-addons">
+            {group.addons.map((addon) => {
+              const quantity = getAddonQuantity(addon.addonId);
+              const addonPrice = parseFloat(addon.price || addon.addonPrice);
+
+              return (
+                <div key={addon.addonId} className="addon-item d-flex justify-content-between align-items-center py-3 border-bottom">
+                  <div className="addon-info flex-grow-1">
+                    <div className="addon-title fw-medium">{addon.addonTitle}</div>
+                    {addon.addonDescription && (
+                      <div className="addon-description text-muted small mt-1">
+                        {addon.addonDescription}
+                      </div>
+                    )}
+                    {addon.isRequired && (
+                      <span className="badge bg-warning text-dark small mt-1">Required</span>
+                    )}
+                  </div>
+
+                  <div className="addon-controls d-flex align-items-center">
+                    <div className="quantity-controls d-flex align-items-center me-3">
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm"
+                        onClick={() => updateAddonQuantity(addon.addonId, quantity - 1)}
+                        disabled={quantity <= 0}
+                        style={{ 
+                          width: '32px', 
+                          height: '32px', 
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        <i className="fas fa-minus" style={{ fontSize: '12px' }}></i>
+                      </button>
+                      
+                      <span className="quantity-display mx-3 fw-medium" style={{ minWidth: '20px', textAlign: 'center' }}>
+                        {quantity}
+                      </span>
+                      
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={() => updateAddonQuantity(addon.addonId, quantity + 1)}
+                        style={{ 
+                          width: '32px', 
+                          height: '32px', 
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        <i className="fas fa-plus" style={{ fontSize: '12px' }}></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Summary */}
+      
+        {Object.entries(addonQuantities).filter(([, qty]) => qty > 0).length === 0 ? (
+          <>
+            
+            
+              <button
+                type="button"
+                className="btn btn-secondary btn-lg th-btn"
+                disabled={true}
+              >
+                
+                Book Now
+              </button>
+              
+          </>
+        ) : (
+          
+              <button
+                type="button"
+                className="th-btn"
+                disabled={!hasSelectedAddons}
+                onClick={() => hasSelectedAddons && onAddToCart?.()}
+              >
+                
+                Book Now {/* ({formatPrice(parseFloat(basePrice) + totalAddonPrice)}) */}
+              </button>
+        )}
+      
+    </div>
+  );
+};
+
+/* ───────────────────────────────────────────────────────────
+   Page component
+   ────────────────────────────────────────────────────────── */
+
+export default function ProjectDetailsPage() {
+  const { slug }          = useParams<{ slug: string }>();
+  const router = useRouter();
+  const { data: session } = useSession();
+  
+  const [product, setProduct] = useState<ProductData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
+  
+  // State for pricing and checkout readiness
+  const [currentPrice, setCurrentPrice] = useState<number>(0);
+  const [variationComplete, setVariationComplete] = useState<boolean>(false);
+  const [checkoutReady, setCheckoutReady] = useState<boolean>(false);
+  
+  // State for cart data
+  const [selectedVariations, setSelectedVariations] = useState<Record<string, string>>({});
+  const [selectedAddons, setSelectedAddons] = useState<Array<{addonId: string, title: string, price: number, quantity: number, groupTitle: string}>>([]);
+  const [addingToCart, setAddingToCart] = useState(false);
+
+  /* Clear cart when component mounts */
+  useEffect(() => {
+    // Clear the cart when opening a product details page
+    clearCart();
+    console.log('🛒 Cart cleared - starting fresh for new product');
+  }, []); // Run only once when component mounts
+
+  /* Fetch product data */
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/products/${slug}`);
+        if (!res.ok)
+          throw new Error(res.status === 404 ? 'Product not found' : 'Failed to fetch product');
+
+        const productData = await res.json();
+        setProduct(productData);
+        setCurrentPrice(parseFloat(productData.price) || 0);
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [slug]);
+
+  /* Derived data (handles single- / double-encoded JSON) */
+  const images             = useMemo(() => deepParseJSON(product?.images),             [product]);
+  const tags               = useMemo(() => deepParseJSON(product?.tags),               [product]);
+  const dimensions         = useMemo(() => deepParseJSON(product?.dimensions),         [product]);
+  const variationAttributes= useMemo(() => normalizeVariationAttributes(product?.variationAttributes),[product]);
+
+  /* Add to cart handler */
+  const handleAddToCart = async () => {
+    if (!product) return;
+
+    // Check if user is logged in
+    if (!session) {
+      router.push('/login-register');
+      return;
+    }
+
+    setAddingToCart(true);
+
+    try {
+      // Create cart item
+      const cartItem: CartItem = {
+        productId: product.id,
+        productTitle: product.name,
+        productPrice: currentPrice,
+        quantity: 1,
+        selectedVariations: selectedVariations,
+        selectedAddons: selectedAddons,
+        productImage: images?.[0] || '',
+        productSku: product.sku || '',
+      };
+
+      // Add to cart
+      addToCart(cartItem);
+
+      // Redirect to checkout
+      router.push('/checkout');
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      alert('Failed to add item to cart. Please try again.');
+    } finally {
+      setAddingToCart(false);
+    }
+  };
+
+  /* ─ Loading & error UI (unchanged) ─ */
+  if (loading) {
+    return (
+      <>
+      <Header />
+        <div className="container d-flex align-items-center justify-content-center" style={{ minHeight: 400 }}>
+                        <LoadingSpinner size="medium" color="#0d6efd" />
+        </div>
+      <Footer />
+      </>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <>
+      <Header />
+        <div className="container d-flex align-items-center justify-content-center" style={{ minHeight: 400 }}>
+          <div className="text-center">
+            <h2>Product Not Found</h2>
+            <p className="text-muted">{error || 'The requested product could not be found.'}</p>
+            <Link href="/all-categories" className="th-btn">
+              Back to Categories <i className="far fa-arrow-right ms-2" />
+            </Link>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  /* ─────────────────────────────────────────────────────────
+     MAIN RENDER (identical to your old layout, but with the
+     new VariationSelector)
+     ──────────────────────────────────────────────────────── */
+
+  return (
+    <>
+<Header />
+      {/* Breadcrumb Area */}
+      <div className="breadcumb-wrapper background-image shape-mockup-wrap" style={{backgroundImage: 'url(/assets/img/bg/breadcrumb-bg.jpg)'}}>
+          <div className="breadcrumb-bottom-shape"><Image src="/assets/img/bg/breadcrumb-bottom.png" alt="shape" width={100} height={100}/></div>
+          <div className="shape-mockup breadcrumb-left jump-reverse"><Image src="/assets/img/icon/breadcrumb-left.png" alt="shape" width={100} height={100}/></div>
+          <div className="shape-mockup breadcrumb-right jump"><Image src="/assets/img/icon/breadcrumb-right.png" alt="shape" width={100} height={100}/></div>
+          <div className="container">
+              <div className="breadcumb-content">
+                  <h1 className="breadcumb-title">{product.name} </h1>
+                  <ul className="breadcumb-menu">
+                      <li><Link href="/">Home</Link></li>
+                      <li><Link href="/all-categories">Categories</Link></li>
+                      <li>{product.name}</li>
+                  </ul>
+              </div>
+          </div>
+      </div>
+      {/* Breadcrumb */}
+
+
+
+      
+
+        <section className="space-top space-extra2-bottom">
+            <div className="container">
+                <div className="row">
+                    <div className="col-xxl-8 col-lg-8">
+                        <div className="page-single mb-30">
+                            <div className="page-img">
+                               <Image 
+                              src={product.banner || "/assets/img/service/service_details.jpg"} 
+                              alt={product.name} 
+                              width={1000} 
+                              height={200} 
+                              style={{height: '270px'}}
+                              className="w-100" />
+                            </div>
+                            <div className="page-content">
+                                <h2 className="sec-title page-title">{product.name}</h2>
+                                <p className="">A cleaning service company specializes in providing professional cleaning solutions for residential, commercial, and industrial spaces. </p>
+                            
+                            
+                            {/* Product Variations - After Description */}
+                            {product.productType === 'variable' && (
+
+                            <VariationSelector
+                              variationAttributes={variationAttributes}
+                              productType={product.productType}
+                              basePrice={product.price}
+                              product={product}
+                              onPriceChange={setCurrentPrice}
+                              onVariationComplete={setVariationComplete}
+                              onSelectionChange={setSelectedVariations}
+                              onAddToCart={handleAddToCart}
+                            />
+
+                            )}
+
+                            {/* Product Addons - After Description */}
+                            {product.productType === 'group' && (
+
+                            <GroupedAddonsSelector
+                              addons={product.addons || []}
+                              productType={product.productType}
+                              basePrice={product.price}
+                              onCheckoutReady={setCheckoutReady}
+                              onSelectionChange={setSelectedAddons}
+                              onAddToCart={handleAddToCart}
+                            />
+
+                            )}
+
+                            {/* Add to Cart button for simple products */}
+                            {product.productType === 'simple' && (
+                            
+                            <button
+                              type="button"
+                              className={`th-btn`}
+                              
+                              onClick={handleAddToCart}
+                              disabled={addingToCart}
+                            >
+                              {addingToCart ? (
+                                <>
+                                  <LoadingSpinner size="small" color="#ffffff" className="me-2" />
+                                  Adding to Cart...
+                                </>
+                              ) : (
+                                <>
+                                 
+                                  Book Now {/* ({formatPrice(parseFloat(product.price))}) */}
+                                </>
+                              )}
+                            </button>
+
+                            )}
+
+                            {!session && (
+                            <p className="text-muted small mt-2">
+                            <i className="fas fa-info-circle me-1"></i>
+                            You'll be redirected to login first
+                            </p>
+                            )}
+                            
+                            
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-xxl-4 col-lg-4">
+                      <aside className="sidebar-area">
+                        <div className="order-summary-widget">
+                          <h4 className="summary-title"> Summary</h4>
+                          
+                          <div className="product-info">
+                            <h5 className="product-name">{product.name}</h5>
+                            
+                            {/* Show selected variations */}
+                            {product.productType === 'variable' && Object.values(selectedVariations).some(v => v) && (
+                              <div className="variations-display">
+                                {Object.entries(selectedVariations)
+                                  .filter(([, value]) => value)
+                                  .map(([key, value], index, array) => (
+                                    <span key={key} className="variation-item">
+                                      {key}: {value}
+                                      {index < array.length - 1 && '    '}
+                                    </span>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                            {/*
+                          <hr className="summary-divider" />
+                              */}
+                          <div className="price-breakdown">
+                            
+
+                            
+
+                            {/* Add-ons */}
+                            {product.productType === 'group' && selectedAddons.length > 0 && (
+                              <div className="addons-section">
+                                <div className="addons-list">
+                                  {Object.entries(
+                                    selectedAddons.reduce((groups: Record<string, typeof selectedAddons>, addon) => {
+                                      const groupKey = addon.groupTitle || 'Other';
+                                      if (!groups[groupKey]) groups[groupKey] = [];
+                                      groups[groupKey].push(addon);
+                                      return groups;
+                                    }, {})
+                                  ).map(([groupTitle, groupAddons]) => (
+                                    <div key={groupTitle} className="addon-group">
+                                      {groupTitle !== 'Other' && (
+                                        <div className="addon-group-header">{groupTitle}:</div>
+                                      )}
+                                      {(groupAddons as any[]).map((addon) => (
+                                        <div key={addon.addonId} className="addon-item">
+                                          <span className="addon-name">• {addon.title}</span>
+                                          <span className="addon-price"><CurrencySymbol /> {(addon.price * addon.quantity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <hr className="summary-divider" />
+
+
+                          <div className="total-section">
+                            <div className="total-row">
+                              <span className="total-label">Total:</span>
+                              <span className="total-amount">
+                                
+                               
+                                {product.productType === 'simple' && (
+                                  <><CurrencySymbol /> {parseFloat(product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
+                                )}
+                                {product.productType === 'variable' && (
+                                  Object.values(selectedVariations).every(v => v) 
+                                    ? <><CurrencySymbol /> {currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
+                                    : <><CurrencySymbol /> 0.00</>
+                                )}
+                                {product.productType === 'group' && (
+                                  <><CurrencySymbol /> {(parseFloat(product.price) + selectedAddons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </aside>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+     
+
+<Footer />
+
+      <style jsx>{`
+        .test-currency {
+          font-family: 'currency-symbol-v2', Arial, sans-serif;
+          font-size: 2rem;
+          color: #007bff;
+        }
+        .sidebar-area {
+          position: sticky;
+          top: 120px;
+          align-self: flex-start;
+        }
+
+        .order-summary-widget {
+          background: #ffffff;
+          border-radius: 12px;
+          padding: 24px;
+          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+          border: 1px solid #e5e7eb;
+          margin-bottom: 2rem;
+        }
+
+        .summary-title {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #1f2937;
+          margin-bottom: 1.5rem;
+          padding-bottom: 0;
+        }
+
+        .product-info {
+          margin-bottom: 1rem;
+        }
+
+        .product-name {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #1f2937;
+          margin-bottom: 0.5rem;
+          line-height: 1.4;
+        }
+
+        .variations-display {
+          font-size: 0.95rem;
+          color: #6b7280;
+          margin-bottom: 0.5rem;
+        }
+
+        .variation-item {
+          background: #f2f2f2;
+          padding: 5px 12px;
+          margin-bottom: 5px;
+          display: inline-block;
+          -webkit-border-radius: 24px;
+          -moz-border-radius: 24px;
+          border-radius: 24px;
+          font-weight: 500;
+          color: black;
+        }
+
+        .summary-divider {
+          border: none;
+          border-top: 1px solid #e5e7eb;
+          margin: 0.75rem 0;
+        }
+
+        .price-breakdown {
+          margin-bottom: 1rem;
+        }
+
+        .price-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.75rem;
+        }
+
+        .price-label {
+          font-size: 0.95rem;
+          color: #6b7280;
+          font-weight: 400;
+        }
+
+        .price-value {
+          font-size: 0.95rem;
+          color: #1f2937;
+          font-weight: 500;
+        }
+
+        .addons-section {
+          margin-bottom: 0.75rem;
+        }
+
+        .addons-section .price-label {
+          display: block;
+          margin-bottom: 0.5rem;
+        }
+
+        .addons-list {
+          margin-left: 0;
+        }
+
+        .addon-group {
+          margin-bottom: 0.75rem;
+        }
+
+        .addon-group:last-child {
+          margin-bottom: 0;
+        }
+
+        .addon-group-header {
+          font-size: 0.9rem;
+          color: #374151;
+          font-weight: 600;
+          margin-bottom: 0.25rem;
+          margin-left: 0.25rem;
+        }
+
+        .addon-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.5rem;
+          padding-left: 0.5rem;
+        }
+
+        .addon-name {
+          font-size: 0.9rem;
+          color: #6b7280;
+          flex: 1;
+        }
+
+        .addon-price {
+          font-size: 0.9rem;
+          color: #1f2937;
+          font-weight: 500;
+        }
+
+        .quantity-section {
+          margin-bottom: 1rem;
+        }
+
+        .quantity-value {
+          font-size: 0.95rem;
+          color: #1f2937;
+          font-weight: 500;
+        }
+
+        .total-section {
+          padding-top: 0.5rem;
+        }
+
+        .total-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .total-label {
+          font-size: 1.1rem;
+          color: #1f2937;
+          font-weight: 600;
+        }
+
+        .total-amount {
+          font-size: 1.25rem;
+          color: #3b82f6;
+          font-weight: 700;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+          .order-summary-widget {
+            padding: 20px;
+          }
+          
+          .summary-title {
+            font-size: 1.3rem;
+          }
+          
+          .total-amount {
+            font-size: 1.15rem;
+          }
+        }
+      `}</style>
+    
+    </>
+  );
+}

@@ -1,0 +1,61 @@
+.hero-4 .hero-img {
+	position: absolute;
+	bottom: 0;
+	right: unset;
+	left: 8%;
+	@include md {
+		position: relative;
+		left: unset;
+	}
+}
+
+.hero-counter {
+	&-wrap {}
+
+	padding-right: 30px;
+
+	&:last-of-type {
+		border-right: 1px solid;
+		padding-right: 30px !important;
+	}
+
+	&:first-child {
+		border-right: none;
+		padding-right: 0 !important;
+	}
+}
+
+.header-layout3 .search-form {
+	input {
+		padding-left: 45px;
+		padding-right: 25px;
+	}
+
+	button {
+		margin-right: -53px;
+	}
+}
+
+.img-box3 {
+	margin-left: 50px;
+	margin-right: 0;
+}
+
+.testi-box2-slide .icon-box {
+	right: unset;
+	left: 80px;
+	gap: 0;
+}
+
+.blog-card2 {
+	.blog-date { 
+		right: unset;
+		left: 30px;
+	}
+
+	.line-btn i {
+		margin-left: 0;
+		margin-right: 5px;
+		font-size: 0.9rem;
+	}
+}

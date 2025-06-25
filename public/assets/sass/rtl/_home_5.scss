@@ -1,0 +1,62 @@
+.hero-5 .hero-overlay {
+	position: absolute;
+	top: 0;
+	left: unset;
+	right: 0;
+	height: 100%;
+}
+
+.video-btn .play-btn {
+	font-size: 16px;
+	margin-left: 15px;
+	margin-right: 0;
+}
+
+.img-box5 .img2 {
+	left: 0;
+	right: unset;
+}
+
+.process-card2:after {
+	top: 29%;
+	left: unset;
+	right: 98%;
+	z-index: -1;
+}
+
+.team-card2 .box-content:before {
+	right: 0;
+	left: unset;
+	clip-path: polygon(0 0, 100% 0%, 100% 100%, 10% 100%);
+}
+
+.team-card2 .th-social {
+	left: 30px;
+	right: unset;
+}
+.gallery-box .box-content:before {
+    inset: 0 0 0 20px;
+}
+.gallery-box .box-content {
+    padding: 20px 20px 20px 0px;
+}
+.footer-layout4 .footer-links li {
+    padding-left: 15px;
+    padding-right: 0;
+    margin-left: 10px;
+    margin-right: 0; 
+}
+.footer-layout4 .footer-links li:after {
+    left: 0;
+    right: unset;
+    margin: -10px 0;
+}
+.testi-grid2-slide {
+    position: relative;
+    padding-left: 0px;
+    padding-right: 50px;
+}
+.hero-5 .icon-box {
+    left: 7.45%;
+    right: unset; 
+}

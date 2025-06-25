@@ -1,0 +1,85 @@
+
+.about-sec-2-left .img-box1 .shape1 {
+	top: 0px;
+	right: inherit;
+	left: 43px;
+}
+.about-sec-2-left .year-counter {
+	top: 68%;
+	right: -20px;
+	text-align: center;
+	right: inherit;
+	left: 10px;
+}
+
+.service-2-bg-right {
+	left: 0;
+	right: inherit;
+}
+.service-2-bg-right-mask {
+	display: none;
+}
+
+.service-card.style-2 .service-2-card-bg {
+	left: 0;
+	right: inherit;
+}
+
+.service-card.style-2 {
+	background-image: none !important;
+	background: var(--white-color);
+}
+
+.service-card.style-2 .box-bottom-right .link-icon {
+	left: 2px;
+	right: inherit;
+}
+
+.service-slider-2 .slider-pagination.swiper-pagination-progressbar.swiper-pagination-horizontal {
+	right: 138px;
+	left: inherit;
+}
+.team-2-card-wrap {
+	margin-left: -108px;
+	margin-right: inherit;
+}
+
+.test-img-2-box .img1 {
+	margin-left: -215px;
+	margin-right: 0;
+}
+
+@media (max-width: 1550px) {
+	.team-2-card-wrap {
+	  margin-left: inherit;
+	}
+}
+
+@include xl {
+	.about-sec-2-left .year-counter {
+		top: 64%;
+		left: -60px;
+	}
+}
+
+@include lg {
+	.test-img-2-box .img1 {
+		margin-left: 0;
+		text-align: center;
+	}
+}
+
+@include md {
+}
+
+@include sm {
+
+}
+
+@include xs {
+
+}
+
+@include vxs {
+
+}

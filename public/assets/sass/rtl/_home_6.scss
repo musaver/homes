@@ -1,0 +1,157 @@
+.header-layout6 .logo-bg {
+	right: 0;
+	left: 0;
+
+	@media(max-width: 1799px) {
+		right: -60px;
+	}
+
+	@media(max-width: 1699px) {
+		right: 0px;
+	}
+
+	@include lg {
+		right: -70px;
+	}
+
+	@media(max-width: 768px) {
+		right: -27%;
+	}
+
+	@include sm {
+		right: -20%;
+	}
+
+	@include xs {
+		right: 0%;
+		width: 58%;
+	}
+	@media(max-width: 480px) { 
+		width: 68%;
+	}
+}
+
+
+.header-logo {
+	margin-top: -40px;
+	margin-right: 80px;
+	margin-left: unset;
+
+	@media(min-width: 1930px) {
+		margin-right: -40px;
+	}
+
+	@media(max-width: 1699px) {
+		padding-left: unset;
+		padding-right: 30px;
+	}
+
+
+
+	@media(max-width: 1399px) {
+		padding-left: 0;
+		padding-right: 50px;
+	}
+
+	@include xl {
+		padding-left: unset;
+		padding-right: 30px;
+	}
+
+	@include lg {
+		padding-left: unset;
+		padding-right: 0;
+		margin-left: unset;
+		margin-right: 20px;
+	}
+
+	@include md {
+		margin-left: unset;
+		margin-right: -40px;
+	}
+
+	@media(max-width: 768px) {
+		margin-left: unset;
+		margin-right: 40px;
+	}
+
+
+	@include sm {
+		margin-top: 0;
+		margin-left: unset;
+		margin-right: 40px;
+	}
+
+	@include xs {
+		margin-left: unset;
+		margin-right: 60px;
+	}
+
+	@include vxs {
+		margin-left: unset;
+		margin-right: 0;
+	}
+}
+
+.header-layout6 .sticky-wrapper.sticky .header-logo {
+	margin-right: 0;
+}
+
+.header-layout6 .main-menu {
+	padding-left: unset;
+	padding-right: 115px;
+
+	@media(max-width: 1699px) {
+		padding-right: 60px;
+	}
+}
+
+.slider-controller {
+	left: unset;
+	right: 7.45%;
+
+	@include hd {
+		right: unset;
+		left: 15%;
+	}
+
+	@media(max-width: 1799px) {
+		left: unset;
+		right: 1%;
+	}
+}
+
+.hero-6 {
+	.hero-img {
+		left: 0;
+		right: unset;
+
+		&:before {
+			left: 0;
+			right: -25px;
+			mask-image: url("../img/hero/hero-shape1.png");
+		}
+
+
+		.img1 {
+			mask-image: url("../img/hero/hero-shape1.png");
+
+		}
+	}
+}
+
+.about-feature2 {
+	text-align: right;
+}
+
+.testi-block.style2 .box-quote {
+	right: unset;
+	left: 60px;
+}
+
+.about-wrapp {
+	@include xxl {
+		right: unset;
+		left: 50px;
+	}
+}

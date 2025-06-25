@@ -1,0 +1,97 @@
+
+.hero-1 .hero-img {
+	left: 2%;
+	right: inherit;
+}
+
+.hero-1 .hero-img .hero-img-bg-shape-wrap .left {
+	position: absolute;
+	bottom: 18%;
+	-webkit-transform: rotate(-45deg);
+	-ms-transform: rotate(-45deg);
+	transform: rotate(-45deg);
+	left: -45%;
+    @include xxl {
+        bottom: 14%;
+        left: 3%;
+    }
+    @include lg {
+        bottom: 5%;
+        left: 11%;
+    }
+}
+
+.hero-1 .hero-img .hero-img-bg-shape-wrap .right {
+	position: absolute;
+	transform: rotate(45deg);
+	right: 46%;
+	bottom: 98%;
+    @include xxl {
+        right: 17%;
+        bottom: 100%;
+    }
+    @include lg {
+        right: 15%;
+        bottom: 88%;
+    }
+}
+.choose-feature-wrap__box {
+	text-align: right;
+}
+.team-card .team-social {
+	left: 31px;
+	right: inherit;
+}
+.price-sec-1 .price-1-right-round {
+	left: 0;
+	right: inherit;
+	transform: rotate(62deg);
+}
+
+.process-box .box-icon::before {
+	transition: all .4s;
+	left: -36%;
+	right: inherit;
+}
+.process-box-wrap:nth-child(2n) .process-box .box-icon::before {
+	left: -34%;
+	right: inherit;
+}
+
+@media (min-width: 1200px) {
+    .th-container-right {
+      margin-left: -560px;
+      margin-right: inherit;
+    }
+}
+
+.testi-img-box {
+	margin-right: -308px;
+	margin-left: inherit;
+}
+
+@include lg {
+    .testi-1-shape-2 {
+        right: 8%;
+        left: inherit;
+    }
+    .testi-1-shape-1 {
+        left: inherit;
+        right: 11%;
+    }
+    .testi-img-box {
+        margin-right: 0px;
+        margin-left: inherit;
+    }
+}
+
+
+@include xl {
+    .process-box .box-icon::before {
+        transition: all .4s;
+        left: -44%;
+        right: inherit;
+    }
+
+}
+

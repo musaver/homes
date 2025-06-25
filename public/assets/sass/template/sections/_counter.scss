@@ -1,0 +1,489 @@
+/* Counter 1 ---------------------------------- */
+.counter-card {
+    --border-color: #D4D4D4;
+
+    &-wrap {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+
+        @media (max-width: 1550px) {
+            padding-left: 50px;
+            padding-right: 50px;
+        }
+
+        @include md {
+            padding-left: 30px;
+            padding-right: 30px;
+        }
+
+        @include sm {
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+
+        &::before {
+            content: "";
+            position: absolute;
+            left: -10%;
+            top: 0;
+            width: 120%;
+            height: 100%;
+            background: var(--smoke-color2);
+            z-index: -1;
+            border-radius: 200px;
+
+            @media (max-width: 1600px) {
+                left: -5%;
+                width: 110%;
+            }
+
+            @media (max-width: 1450px) {
+                left: -3%;
+                width: 106%;
+            }
+
+            @media (max-width: 1330px) {
+                left: -2%;
+                width: 104%;
+            }
+
+            @include xl {
+                left: -3%;
+                width: 106%;
+            }
+
+            @include md {
+                left: -5%;
+                width: 110%;
+                border-radius: 0;
+            }
+
+            @include xs {
+                left: 0;
+                width: 100%;
+            }
+        }
+
+        .right-shape {
+            @include md {
+                display: none;
+            }
+        }
+
+        .right-shape:last-child {
+            display: none;
+        }
+    }
+
+    display: flex;
+    align-items: center;
+    gap: 15px;
+
+    .box-number {
+        font-size: 84px;
+        line-height: 1;
+        color: $theme-color;
+        font-weight: 400;
+        margin-bottom: 8px;
+        margin-top: -0.12em;
+
+        @include xl {
+            font-size: 65px;
+        }
+
+        @include lg {
+            font-size: 45px;
+        }
+
+        @include md {
+            font-size: 35px;
+        }
+
+        @include sm {
+            font-size: 30px;
+        }
+
+        @include xs {
+            font-size: 32px;
+        }
+
+        @include vxs {
+            font-size: 30px;
+        }
+
+        .counter-number {
+            color: $title-color;
+            font-size: 84px;
+            font-weight: 900;
+
+            @include xl {
+                font-size: 75px;
+            }
+
+            @include lg {
+                font-size: 60px;
+            }
+
+            @include md {
+                font-size: 45px;
+            }
+
+            @include sm {
+                font-size: 35px;
+            }
+
+            @include xs {
+                font-size: 30px;
+            }
+
+            @include vxs {
+                font-size: 28px;
+            }
+        }
+    }
+
+    .box-text {
+        font-size: 18px;
+        font-weight: 600;
+        color: $body-color;
+
+        @include md {
+            font-size: 16px;
+        }
+    }
+
+    .media-body {
+        flex: 1;
+    }
+}
+
+
+@include lg {
+    .counter-card {
+        flex-direction: column;
+        text-align: center;
+        gap: 20px;
+
+        .box-number {
+            margin-bottom: 5px;
+        }
+    }
+}
+
+
+@include sm {
+    .counter-card {
+        &-wrap {
+            flex-wrap: wrap;
+            position: relative;
+
+            @include vxs {
+                flex-direction: column;
+            }
+        }
+
+        flex: 50%;
+        padding-left: 10px;
+        padding-right: 10px;
+
+        &:nth-child(1),
+        &:nth-child(3) {
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+    }
+}
+
+/* Counter  2 ---------------------------------- */
+
+.counter-card-wrap.style2 {
+    &:before {
+        display: none;
+    }
+
+    @include vxs {
+        gap: 30px;
+    }
+
+    .counter-card {
+        @include vxs {
+            margin-bottom: 0px;
+            padding-bottom: 0;
+        }
+    }
+
+    .box-number {
+        font-size: 54px;
+        margin-bottom: 0px;
+        font-weight: 400;
+
+        @include lg {
+            font-size: 48px;
+        }
+
+        @include md {
+            font-size: 42px;
+        }
+
+        @include sm {
+            font-size: 38px;
+        }
+
+        @include xs {
+            font-size: 30px;
+        }
+
+        .counter-number {
+            font-weight: 700;
+            font-size: 64px;
+
+            @include lg {
+                font-size: 58px;
+            }
+
+            @include md {
+                font-size: 50px;
+            }
+
+            @include sm {
+                font-size: 45px;
+            }
+
+            @include xs {
+                font-size: 34px;
+            }
+        }
+    }
+}
+
+/* Counter 1 ---------------------------------- */
+.counter-area {
+    .th-container {
+        --main-container: 1599px;
+    }
+}
+
+.counter-card2 {
+    text-align: center;
+
+    &-wrap {
+        --th-border-color: rgba(255, 255, 255, 0.3);
+        display: flex;
+        justify-content: space-between;
+        padding: 80px 0;
+
+        .divider {
+            width: 1px;
+            height: 175px;
+            background-color: $border-color;
+
+            &:last-of-type {
+                display: none;
+            }
+        }
+    }
+
+    .box-icon {
+        @include equal-size-lineHeight(92px);
+        background-image: url('data:image/svg+xml,<svg width="93" height="94" viewBox="0 0 93 94" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M47.4858 2.35636C55.7133 4.1267 60.1559 12.7468 67.3926 17.0442C75.016 21.5713 87.0571 20.2067 90.9568 28.1713C94.8361 36.0941 86.759 44.7719 85.2223 53.459C83.7528 61.7668 86.6672 70.9505 82.1316 78.0633C77.3922 85.4958 69.1939 91.0143 60.4716 92.2735C52.0774 93.4854 45.0328 86.4302 36.7479 84.6152C27.5711 82.6048 16.5573 87.1208 9.36342 81.077C2.16678 75.0308 0.456568 64.0744 1.13757 54.6977C1.76262 46.0914 9.5601 40.1868 12.9106 32.2354C16.4065 23.9391 14.3822 12.9887 21.1928 7.10316C28.0716 1.15866 38.5991 0.444151 47.4858 2.35636Z" stroke="%23068FFF" stroke-width="2" stroke-dasharray="8 8"/></svg>');
+        margin: 0 auto 20px auto;
+        background-size: 100% 100%;
+        position: relative;
+        z-index: 2;
+
+        &:before {
+            content: '';
+            position: absolute;
+            inset: 7px;
+            background-color: $white-color;
+            clip-path: path("M39.3256 1.5968C46.2161 3.07946 49.9368 10.2988 55.9975 13.8979C62.3821 17.6893 72.4666 16.5465 75.7326 23.2168C78.9814 29.8521 72.2169 37.1198 70.93 44.3953C69.6992 51.353 72.14 59.0444 68.3415 65.0014C64.3722 71.226 57.5061 75.8478 50.2012 76.9024C43.171 77.9173 37.2712 72.0087 30.3326 70.4886C22.647 68.8049 13.4229 72.587 7.3981 67.5253C1.37092 62.4617 -0.0613862 53.2856 0.508951 45.4327C1.03243 38.2249 7.56282 33.2798 10.3689 26.6205C13.2967 19.6724 11.6013 10.5014 17.3052 5.57224C23.0662 0.59372 31.8829 -0.00467747 39.3256 1.5968Z");
+            z-index: -1;
+            transition: 0.4s ease-in-out;
+        }
+
+        img {
+            transition: 0.4s ease-in-out;
+        }
+    }
+
+    .box-number {
+        font-size: 40px;
+        color: $theme-color;
+        font-weight: 700;
+        margin-bottom: 0px;
+        margin-top: -0.18em;
+
+        @include lg {
+            font-size: 36px;
+        }
+    }
+
+    .box-text {
+        font-size: 20px;
+        color: $white-color;
+        font-weight: 500;
+
+        @include lg {
+            font-size: 18px;
+        }
+
+        @include md {
+            font-size: 15px;
+        }
+    }
+
+    &:hover {
+        .box-icon {
+            &:before {
+                transform: rotate(-98deg);
+            }
+
+            img {
+                transform: rotateY(180deg);
+            }
+        }
+    }
+}
+
+@include sm {
+    .counter-card2 {
+        &-wrap {
+            text-align: center;
+            flex-wrap: wrap;
+            position: relative;
+
+            .divider {
+                display: none;
+            }
+
+            &:after {
+                content: '';
+                height: 100%;
+                width: 1px;
+                position: absolute;
+                top: 0;
+                left: 50%;
+                background-color: $border-color;
+            }
+        }
+
+        flex: 50%;
+        padding-left: 10px;
+        padding-right: 10px;
+
+        &:nth-child(1),
+        &:nth-child(3) {
+            padding-bottom: 30px;
+            border-bottom: 1px solid $border-color;
+            margin-bottom: 30px;
+        }
+    }
+}
+
+/* counter card --------------------*/
+.counter-card3 {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+
+    @media(max-width: 480px) {
+        display: block;
+        text-align: center;
+    }
+
+    &-wrap {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 80px 0;
+
+        @include lg {
+            display: grid;
+            grid-template-columns: auto auto;
+            gap: 30px;
+        }
+
+        @media(max-width: 480px) {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .divider {
+            width: 1px;
+            height: 175px;
+            background-color: $border-color;
+
+            &:last-of-type {
+                display: none;
+            }
+        }
+    }
+
+    .box-icon {
+        @include equal-size-lineHeight(92px);
+        background-image: url('data:image/svg+xml,<svg width="93" height="94" viewBox="0 0 93 94" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M47.4858 2.35636C55.7133 4.1267 60.1559 12.7468 67.3926 17.0442C75.016 21.5713 87.0571 20.2067 90.9568 28.1713C94.8361 36.0941 86.759 44.7719 85.2223 53.459C83.7528 61.7668 86.6672 70.9505 82.1316 78.0633C77.3922 85.4958 69.1939 91.0143 60.4716 92.2735C52.0774 93.4854 45.0328 86.4302 36.7479 84.6152C27.5711 82.6048 16.5573 87.1208 9.36342 81.077C2.16678 75.0308 0.456568 64.0744 1.13757 54.6977C1.76262 46.0914 9.5601 40.1868 12.9106 32.2354C16.4065 23.9391 14.3822 12.9887 21.1928 7.10316C28.0716 1.15866 38.5991 0.444151 47.4858 2.35636Z" stroke="%23068FFF" stroke-width="2" stroke-dasharray="8 8"/></svg>');
+        margin: auto;
+        background-size: 100% 100%;
+        position: relative;
+        text-align: center;
+        z-index: 2;
+
+        @media(max-width: 480px) {
+            margin-bottom: 20px;
+        }
+
+        &:before {
+            content: '';
+            position: absolute;
+            inset: 7px;
+            background-color: $white-color;
+            clip-path: path("M39.3256 1.5968C46.2161 3.07946 49.9368 10.2988 55.9975 13.8979C62.3821 17.6893 72.4666 16.5465 75.7326 23.2168C78.9814 29.8521 72.2169 37.1198 70.93 44.3953C69.6992 51.353 72.14 59.0444 68.3415 65.0014C64.3722 71.226 57.5061 75.8478 50.2012 76.9024C43.171 77.9173 37.2712 72.0087 30.3326 70.4886C22.647 68.8049 13.4229 72.587 7.3981 67.5253C1.37092 62.4617 -0.0613862 53.2856 0.508951 45.4327C1.03243 38.2249 7.56282 33.2798 10.3689 26.6205C13.2967 19.6724 11.6013 10.5014 17.3052 5.57224C23.0662 0.59372 31.8829 -0.00467747 39.3256 1.5968Z");
+            z-index: -1;
+            transition: 0.4s ease-in-out;
+        }
+
+        img {
+            transition: 0.4s ease-in-out;
+        }
+    }
+
+    .box-number {
+        font-size: 40px;
+        color: $theme-color;
+        font-weight: 700;
+        margin-bottom: 0px;
+        margin-top: -0.18em;
+
+        @include lg {
+            font-size: 36px;
+        }
+    }
+
+    .box-text {
+        font-size: 20px;
+        color: $white-color;
+        font-weight: 500;
+
+        @include lg {
+            font-size: 18px;
+        }
+
+        @include md {
+            font-size: 15px;
+        }
+    }
+
+    &:hover {
+        .box-icon {
+            &:before {
+                transform: rotate(-98deg);
+            }
+
+            img {
+                transform: rotateY(180deg);
+            }
+        }
+    }
+}
