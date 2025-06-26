@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
@@ -6,15 +6,18 @@ import { orders, orderItems } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Get the id from params
+    const { id } = await params;
 
     // Fetch order with all its details
     const [order] = await db
@@ -42,7 +45,7 @@ export async function GET(
         updatedAt: orders.updatedAt,
       })
       .from(orders)
-      .where(eq(orders.id, params.id))
+      .where(eq(orders.id, id))
       .limit(1);
 
     if (!order) {
@@ -60,7 +63,7 @@ export async function GET(
       ...order,
       items: items.map(item => ({
         ...item,
-        addons: item.addons ? JSON.parse(item.addons) : null,
+        addons: item.addons && typeof item.addons === 'string' ? JSON.parse(item.addons) : null,
       })),
     };
 

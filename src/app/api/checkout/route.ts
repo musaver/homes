@@ -62,44 +62,48 @@ export async function POST(req: Request) {
     // Generate order number (e.g., ORD-20240101-001)
     const orderNumber = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
-    // Create order
+    // Create order with proper type handling
     const orderId = uuidv4();
     await db.insert(orders).values({
       id: orderId,
       orderNumber,
       userId: session.user.id,
-      email: session.user.email,
-      phone,
+      email: session.user.email!,
+      phone: phone || '',
       status: 'pending',
-      subtotal,
-      vatAmount,
-      serviceAmount,
-      totalAmount: total,
-      shippingAddress1: address,
-      shippingCity: city,
-      shippingState: state,
-      shippingPostalCode: postalCode,
+      paymentStatus: 'pending',
+      subtotal: subtotal || 0,
+      vatAmount: vatAmount || 0,
+      serviceAmount: serviceAmount || 0,
+      totalAmount: total || 0,
+      shippingAddress1: address || '',
+      shippingAddress2: null,
+      shippingCity: city || null,
+      shippingState: state || null,
+      shippingPostalCode: postalCode || null,
       shippingCountry: 'UAE',
-      notes: specialInstructions,
-      serviceDate,
-      serviceTime,
+      notes: specialInstructions || null,
+      serviceDate: serviceDate || '',
+      serviceTime: serviceTime || '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
-    // Create order items
+    // Create order items with proper type handling
     const orderItemsData = cartItems.map((item: any) => ({
       id: uuidv4(),
       orderId: orderId,
       productId: item.productId,
-      productName: item.productTitle,
+      productName: item.productTitle || '',
       variantTitle: Object.entries(item.selectedVariations || {})
         .map(([key, value]) => `${key}: ${value}`)
-        .join(', '),
-      quantity: item.quantity,
-      price: item.productPrice.toString(),
-      totalPrice: (item.taxes?.finalAmount || item.productPrice).toString(),
-      addons: JSON.stringify(item.selectedAddons),
-      productImage: item.productImage,
-      productSku: item.productSku,
+        .join(', ') || null,
+      quantity: item.quantity || 1,
+      price: (item.productPrice || 0).toString(),
+      totalPrice: ((item.taxes?.finalAmount || item.productPrice) || 0).toString(),
+      addons: item.selectedAddons ? JSON.stringify(item.selectedAddons) : null,
+      productImage: item.productImage || null,
+      productSku: item.productSku || null,
     }));
 
     await db.insert(orderItems).values(orderItemsData);
@@ -107,30 +111,30 @@ export async function POST(req: Request) {
     // Send confirmation email
     try {
       await sendOrderConfirmationEmail(
-        session.user.email,
+        session.user.email!,
         orderNumber,
         name,
         {
-          subtotal,
-          vatAmount,
-          serviceAmount,
-          total,
+          subtotal: subtotal || 0,
+          vatAmount: vatAmount || 0,
+          serviceAmount: serviceAmount || 0,
+          total: total || 0,
         },
         cartItems.map((item: any) => ({
-          productName: item.productTitle,
-          quantity: item.quantity,
-          price: item.productPrice,
+          productName: item.productTitle || '',
+          quantity: item.quantity || 1,
+          price: item.productPrice || 0,
           variations: Object.entries(item.selectedVariations || {})
             .map(([key, value]) => `${key}: ${value}`)
             .join(', '),
-          addons: item.selectedAddons.map((addon: any) => 
+          addons: (item.selectedAddons || []).map((addon: any) => 
             `${addon.title} (${addon.quantity}x)`
           ).join(', '),
-          taxes: item.taxes,
+          taxes: item.taxes || null,
         })),
         serviceDate,
         serviceTime,
-        specialInstructions
+        specialInstructions || ''
       );
     } catch (error) {
       console.error('Failed to send confirmation email:', error);

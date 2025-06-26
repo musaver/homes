@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { orders, orderItems } from '@/lib/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, inArray } from 'drizzle-orm';
 
-export async function GET() {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -35,10 +35,10 @@ export async function GET() {
 
     // Fetch items for all orders
     const orderIds = userOrders.map(order => order.id);
-    const allItems = await db
+    const allItems = orderIds.length > 0 ? await db
       .select()
       .from(orderItems)
-      .where(eq(orderItems.orderId, orderIds[0])); // Using first order ID as example
+      .where(inArray(orderItems.orderId, orderIds)) : [];
 
     // Group items by order ID
     const itemsByOrder = allItems.reduce((acc, item) => {
@@ -47,7 +47,7 @@ export async function GET() {
       }
       acc[item.orderId].push({
         ...item,
-        addons: item.addons ? JSON.parse(item.addons) : null,
+        addons: item.addons && typeof item.addons === 'string' ? JSON.parse(item.addons) : null,
       });
       return acc;
     }, {} as Record<string, any[]>);

@@ -40,9 +40,9 @@ export const getCart = (): Cart => {
     
     const total = items.reduce((sum, item) => {
       const itemTotal = item.productPrice * item.quantity;
-      const addonsTotal = item.selectedAddons.reduce((addonSum, addon) => 
+      const addonsTotal = item.selectedAddons?.reduce((addonSum, addon) => 
         addonSum + (addon.price * addon.quantity), 0
-      );
+      ) || 0;
       return sum + itemTotal + addonsTotal;
     }, 0);
 

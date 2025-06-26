@@ -44,15 +44,15 @@ export default function TestSpinnersPage() {
                 </div>
                 <div className="col-md-4 text-center mb-4">
                   <h6>Small</h6>
-                  <LoadingSpinner size="small" color="#28a745" />
+                  <LoadingSpinner size="small" color="#0d6efd" />
                 </div>
                 <div className="col-md-4 text-center mb-4">
                   <h6>Medium</h6>
-                  <LoadingSpinner size="medium" color="#28a745" />
+                  <LoadingSpinner size="medium" color="#0d6efd" />
                 </div>
                 <div className="col-md-4 text-center mb-4">
                   <h6>Large</h6>
-                  <LoadingSpinner size="large" color="#28a745" />
+                  <LoadingSpinner size="large" color="#0d6efd" />
                 </div>
               </div>
               
@@ -61,21 +61,17 @@ export default function TestSpinnersPage() {
                 <div className="col-12">
                   <h4 className="mb-4">Different Colors</h4>
                 </div>
-                <div className="col-md-3 text-center mb-4">
-                  <h6>Blue</h6>
-                  <LoadingSpinner color="#0d6efd" />
+                <div className="col-md-4 text-center mb-4">
+                  <h6>Primary</h6>
+                  <LoadingSpinner size="medium" color="#0d6efd" />
                 </div>
-                <div className="col-md-3 text-center mb-4">
-                  <h6>Green</h6>
-                  <LoadingSpinner color="#28a745" />
+                <div className="col-md-4 text-center mb-4">
+                  <h6>Success</h6>
+                  <LoadingSpinner size="medium" color="#198754" />
                 </div>
-                <div className="col-md-3 text-center mb-4">
-                  <h6>Red</h6>
-                  <LoadingSpinner color="#dc3545" />
-                </div>
-                <div className="col-md-3 text-center mb-4">
-                  <h6>Orange</h6>
-                  <LoadingSpinner color="#fd7e14" />
+                <div className="col-md-4 text-center mb-4">
+                  <h6>Danger</h6>
+                  <LoadingSpinner size="medium" color="#dc3545" />
                 </div>
               </div>
               

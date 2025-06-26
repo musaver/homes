@@ -51,8 +51,8 @@ export default function CheckoutPage() {
   const markerRef = useRef<any>(null);
 
   const [taxSettings, setTaxSettings] = useState<{
-    vatTax: { enabled: boolean; type: 'percentage' | 'fixed'; value: number };
-    serviceTax: { enabled: boolean; type: 'percentage' | 'fixed'; value: number };
+    vatTax: { enabled: boolean; type: 'percentage' | 'fixed'; value: number } | null;
+    serviceTax: { enabled: boolean; type: 'percentage' | 'fixed'; value: number } | null;
   } | null>(null);
 
   const [totalTaxCalculation, setTotalTaxCalculation] = useState<{
@@ -147,7 +147,7 @@ export default function CheckoutPage() {
     });
 
     // Set a 5-second timeout for geocoding
-    const timeoutPromise = new Promise((_, reject) => {
+    const timeoutPromise = new Promise((resolve, reject) => {
       setTimeout(() => {
         console.warn('Geocoding timeout - using default coordinates');
         resolve({
@@ -684,7 +684,7 @@ export default function CheckoutPage() {
                         <h5 className="product-name">{item.productTitle}</h5>
                         
                         {/* Show selected variations */}
-                        {Object.keys(item.selectedVariations).length > 0 && (
+                        {item.selectedVariations && Object.keys(item.selectedVariations).length > 0 && (
                           <div className="variations-display">
                             {Object.entries(item.selectedVariations).map(([key, value]) => (
                               <span key={key} className="variation-item">
@@ -696,27 +696,18 @@ export default function CheckoutPage() {
                       </div>
 
                       {/* Add-ons */}
-                      {item.selectedAddons.length > 0 && (
+                      {item.selectedAddons && item.selectedAddons.length > 0 && (
                         <div className="addons-section">
                           <div className="addons-list">
                             {Object.entries(
-                              item.selectedAddons.reduce((groups: Record<string, typeof item.selectedAddons>, addon) => {
-                                const groupKey = addon.groupTitle || 'Other';
-                                if (!groups[groupKey]) groups[groupKey] = [];
-                                groups[groupKey].push(addon);
-                                return groups;
+                              item.selectedAddons.reduce((acc: Record<string, number>, addon: any) => {
+                                acc[addon.title] = (acc[addon.title] || 0) + addon.quantity;
+                                return acc;
                               }, {})
-                            ).map(([groupTitle, groupAddons]) => (
-                              <div key={groupTitle} className="addon-group">
-                                {groupTitle !== 'Other' && (
-                                  <div className="addon-group-header">{groupTitle}:</div>
-                                )}
-                                {groupAddons.map((addon, addonIndex) => (
-                                  <div key={addonIndex} className="addon-item">
-                                    <span className="addon-name">• {addon.title} ({addon.quantity}x)</span>
-                                    <span className="addon-price"><CurrencySymbol /> {formatPrice(addon.price * addon.quantity)}</span>
-                                  </div>
-                                ))}
+                            ).map(([title, quantity]) => (
+                              <div key={title} className="addon-item">
+                                <span className="addon-title">{title}</span>
+                                <span className="addon-quantity">x{quantity}</span>
                               </div>
                             ))}
                           </div>
@@ -726,10 +717,10 @@ export default function CheckoutPage() {
                       <div className="item-total-section">
                         <div className="price-row">
                           <span className="price-label">Item Total:</span>
-                          <span className="price-value">
+                          <span className="item-price">
                             <CurrencySymbol />
                             {formatPrice(item.productPrice * item.quantity + 
-                              item.selectedAddons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0)
+                              (item.selectedAddons ? item.selectedAddons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0) : 0)
                             )}
                           </span>
                         </div>
@@ -747,7 +738,7 @@ export default function CheckoutPage() {
                       <span className="total-amount"><CurrencySymbol /> {formatPrice(cart.total)}</span>
                     </div>
 
-                    {taxSettings?.vatTax.enabled && (
+                    {taxSettings?.vatTax && (
                       <div className="total-row tax-row">
                         <span className="total-label">
                           VAT ({taxSettings.vatTax.type === 'percentage' ? `${taxSettings.vatTax.value}%` : 'Fixed'}):
@@ -758,7 +749,7 @@ export default function CheckoutPage() {
                       </div>
                     )}
 
-                    {taxSettings?.serviceTax.enabled && (
+                    {taxSettings?.serviceTax && (
                       <div className="total-row tax-row">
                         <span className="total-label">
                           Service Tax ({taxSettings.serviceTax.type === 'percentage' ? `${taxSettings.serviceTax.value}%` : 'Fixed'}):
@@ -903,7 +894,7 @@ export default function CheckoutPage() {
           font-weight: 400;
         }
 
-        .price-value {
+        .item-price {
           font-size: 0.95rem;
           color: #1f2937;
           font-weight: 500;

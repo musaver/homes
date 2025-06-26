@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import LoadingSpinner from './LoadingSpinner';
 
+/// <reference types="@types/google.maps" />
+
 interface AddressMapProps {
   onAddressSelect: (address: string) => void;
 }
@@ -144,16 +146,20 @@ export default function AddressMap({ onAddressSelect }: AddressMapProps) {
         const geocoder = new window.google.maps.Geocoder();
         geocoder.geocode(
           { location: { lat, lng } },
-          (results, status) => {
+          (
+            results: google.maps.GeocoderResult[] | null,
+            status: google.maps.GeocoderStatus
+          ) => {
             setIsLoading(false);
             
-            if (status === 'OK' && results && results[0]) {
-              onAddressSelect(results[0].formatted_address);
+            if (status === google.maps.GeocoderStatus.OK && results && results[0]) {
+              const address = results[0].formatted_address;
+              onAddressSelect(address);
               if (inputRef.current) {
-                inputRef.current.value = results[0].formatted_address;
+                inputRef.current.value = address;
               }
             } else {
-              setError('Could not find address for this location');
+              console.error('Geocoder failed:', status);
             }
           }
         );
@@ -237,17 +243,24 @@ export default function AddressMap({ onAddressSelect }: AddressMapProps) {
         // Get address for location
         if (window.google && window.google.maps) {
           const geocoder = new window.google.maps.Geocoder();
-          geocoder.geocode({ location: pos }, (results, status) => {
-            setIsLoading(false);
-            if (status === 'OK' && results && results[0]) {
-              onAddressSelect(results[0].formatted_address);
-              if (inputRef.current) {
-                inputRef.current.value = results[0].formatted_address;
+          geocoder.geocode(
+            { location: pos },
+            (
+              results: google.maps.GeocoderResult[] | null,
+              status: google.maps.GeocoderStatus
+            ) => {
+              setIsLoading(false);
+              if (status === google.maps.GeocoderStatus.OK && results && results[0]) {
+                const address = results[0].formatted_address;
+                onAddressSelect(address);
+                if (inputRef.current) {
+                  inputRef.current.value = address;
+                }
+              } else {
+                console.error('Geocoder failed:', status);
               }
-            } else {
-              setError('Could not find address for your location');
             }
-          });
+          );
         } else {
           setIsLoading(false);
         }

@@ -758,8 +758,8 @@ export default function ProjectDetailsPage() {
   const [addingToCart, setAddingToCart] = useState(false);
 
   const [taxSettings, setTaxSettings] = useState<{
-    vatTax: { enabled: boolean; type: 'percentage' | 'fixed'; value: number };
-    serviceTax: { enabled: boolean; type: 'percentage' | 'fixed'; value: number };
+    vatTax: { enabled: boolean; type: 'percentage' | 'fixed'; value: number } | null;
+    serviceTax: { enabled: boolean; type: 'percentage' | 'fixed'; value: number } | null;
   } | null>(null);
 
   const [taxCalculation, setTaxCalculation] = useState<{
