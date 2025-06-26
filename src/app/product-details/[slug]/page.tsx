@@ -962,8 +962,11 @@ export default function ProjectDetailsPage() {
                               className="w-100" />
                             </div>
                             <div className="page-content">
-                                <h2 className="sec-title page-title">{product.name}</h2>
-                                <p className="">A cleaning service company specializes in providing professional cleaning solutions for residential, commercial, and industrial spaces. </p>
+                                {/*<h2 className="sec-title page-title">{product.name}</h2>*/}
+                                <div 
+                                    className="product-description"
+                                    dangerouslySetInnerHTML={{ __html: product.description || '' }}
+                                />
                             
                             
                             {/* Product Variations - After Description */}
