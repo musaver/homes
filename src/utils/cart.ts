@@ -3,16 +3,22 @@ export interface CartItem {
   productTitle: string;
   productPrice: number;
   quantity: number;
-  selectedVariations: Record<string, string>;
-  selectedAddons: Array<{
+  selectedVariations?: Record<string, string>;
+  selectedAddons?: Array<{
     addonId: string;
     title: string;
     price: number;
     quantity: number;
-    groupTitle?: string;
+    groupTitle: string;
   }>;
-  productImage?: string;
-  productSku?: string;
+  productImage: string;
+  productSku: string;
+  taxes?: {
+    vatAmount: number;
+    serviceAmount: number;
+    totalTaxAmount: number;
+    finalAmount: number;
+  };
 }
 
 export interface Cart {

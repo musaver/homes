@@ -28,13 +28,15 @@ export async function POST(req: Request) {
       specialInstructions,
       cartItems,
       subtotal,
+      vatAmount,
+      serviceAmount,
       total
     } = body;
 
     // Validate required fields
     if (!name || !phone || !address || !serviceDate || !serviceTime || !cartItems || cartItems.length === 0) {
       return NextResponse.json({ 
-        error: 'Missing required fields: name, phone, address, service date, service time, or cart items' 
+        error: 'Missing required fields' 
       }, { status: 400 });
     }
 
@@ -57,160 +59,94 @@ export async function POST(req: Request) {
       // Don't fail the order if profile update fails, just log it
     }
 
-    // Generate order number
-    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-    const orderId = uuidv4();
+    // Generate order number (e.g., ORD-20240101-001)
+    const orderNumber = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
     // Create order
+    const orderId = uuidv4();
     await db.insert(orders).values({
       id: orderId,
       orderNumber,
       userId: session.user.id,
-      email: session.user.email!,
+      email: session.user.email,
       phone,
       status: 'pending',
-      paymentStatus: 'pending',
-      fulfillmentStatus: 'pending',
-      subtotal: subtotal.toString(),
-      taxAmount: '0.00',
-      shippingAmount: '0.00',
-      discountAmount: '0.00',
-      totalAmount: total.toString(),
-      currency: 'USD',
-      
-      // Use name for both billing and shipping names
-      billingFirstName: name.split(' ')[0] || name,
-      billingLastName: name.split(' ').slice(1).join(' ') || '',
-      billingAddress1: address,
-      billingCity: city || '',
-      billingState: state || '',
-      billingPostalCode: postalCode || '',
-      billingCountry: 'US',
-      
-      shippingFirstName: name.split(' ')[0] || name,
-      shippingLastName: name.split(' ').slice(1).join(' ') || '',
+      subtotal,
+      vatAmount,
+      serviceAmount,
+      totalAmount: total,
       shippingAddress1: address,
-      shippingCity: city || '',
-      shippingState: state || '',
-      shippingPostalCode: postalCode || '',
-      shippingCountry: 'US',
-      
-      // Service scheduling
+      shippingCity: city,
+      shippingState: state,
+      shippingPostalCode: postalCode,
+      shippingCountry: 'UAE',
+      notes: specialInstructions,
       serviceDate,
       serviceTime,
-      
-      // Special instructions
-      notes: specialInstructions || null,
     });
 
     // Create order items
-    const orderItemsToInsert = cartItems.map((item: any) => {
-      // Create variation title from selected variations
-      let variantTitle = null;
-      if (item.selectedVariations && Object.keys(item.selectedVariations).length > 0) {
-        variantTitle = Object.entries(item.selectedVariations)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join(', ');
-      }
-
-      // Store addons data
-      let addonsData = null;
-      if (item.selectedAddons && Array.isArray(item.selectedAddons) && item.selectedAddons.length > 0) {
-        // Ensure group titles are preserved in the addons data
-        addonsData = item.selectedAddons.map((addon: any) => ({
-          addonId: addon.addonId,
-          title: addon.title,
-          price: addon.price,
-          quantity: addon.quantity,
-          groupTitle: addon.groupTitle || 'Ungrouped' // Preserve group title
-        }));
-      }
-
-      // Calculate total price including addons
-      const basePrice = item.productPrice * item.quantity;
-      const addonsPrice = addonsData 
-        ? addonsData.reduce((sum: number, addon: any) => 
-            sum + ((addon.price || 0) * (addon.quantity || 1)), 0)
-        : 0;
-      const totalItemPrice = basePrice + addonsPrice;
-
-      const orderItem = {
-        id: uuidv4(),
-        orderId,
-        productId: item.productId,
-        productName: item.productTitle,
-        variantTitle: variantTitle,
-        quantity: item.quantity,
-        price: item.productPrice.toString(),
-        totalPrice: totalItemPrice.toString(),
-        productImage: item.productImage || null,
-        addons: addonsData,
-      };
-
-      return orderItem;
-    });
-
-    await db.insert(orderItems).values(orderItemsToInsert);
-
-    // Prepare email data
-    const emailItems = cartItems.map((item: any) => ({
+    const orderItemsData = cartItems.map((item: any) => ({
+      id: uuidv4(),
+      orderId: orderId,
+      productId: item.productId,
       productName: item.productTitle,
+      variantTitle: Object.entries(item.selectedVariations || {})
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(', '),
       quantity: item.quantity,
-      price: item.productPrice * item.quantity,
-      variations: item.selectedVariations && Object.keys(item.selectedVariations).length > 0
-        ? Object.entries(item.selectedVariations)
-            .map(([key, value]) => `${key}: ${value}`)
-            .join(', ')
-        : '',
-      addons: item.selectedAddons && item.selectedAddons.length > 0
-        ? (() => {
-            // Group addons by groupTitle for better email display
-            const grouped = item.selectedAddons.reduce((groups: Record<string, any[]>, addon: any) => {
-              const groupKey = addon.groupTitle || 'Ungrouped';
-              if (!groups[groupKey]) groups[groupKey] = [];
-              groups[groupKey].push(addon);
-              return groups;
-            }, {});
-            
-            return Object.entries(grouped)
-              .map(([groupTitle, groupAddons]) => {
-                const addons = groupAddons as any[];
-                return `${groupTitle}: ${addons.map((addon: any) => `${addon.title} (${addon.quantity}x)`).join(', ')}`;
-              })
-              .join(' | ');
-          })()
-        : ''
+      price: item.productPrice.toString(),
+      totalPrice: (item.taxes?.finalAmount || item.productPrice).toString(),
+      addons: JSON.stringify(item.selectedAddons),
+      productImage: item.productImage,
+      productSku: item.productSku,
     }));
 
-    // Send order confirmation email
+    await db.insert(orderItems).values(orderItemsData);
+
+    // Send confirmation email
     try {
       await sendOrderConfirmationEmail(
-        session.user.email!,
+        session.user.email,
         orderNumber,
         name,
-        total,
-        emailItems,
+        {
+          subtotal,
+          vatAmount,
+          serviceAmount,
+          total,
+        },
+        cartItems.map((item: any) => ({
+          productName: item.productTitle,
+          quantity: item.quantity,
+          price: item.productPrice,
+          variations: Object.entries(item.selectedVariations || {})
+            .map(([key, value]) => `${key}: ${value}`)
+            .join(', '),
+          addons: item.selectedAddons.map((addon: any) => 
+            `${addon.title} (${addon.quantity}x)`
+          ).join(', '),
+          taxes: item.taxes,
+        })),
         serviceDate,
         serviceTime,
         specialInstructions
       );
-    } catch (emailError) {
-      console.error('Failed to send order confirmation email:', emailError);
+    } catch (error) {
+      console.error('Failed to send confirmation email:', error);
       // Don't fail the order creation if email fails
     }
 
-    return NextResponse.json({
+    return NextResponse.json({ 
       success: true,
       orderNumber,
-      orderId,
-      message: 'Order placed successfully!'
+      message: 'Order created successfully'
     });
 
   } catch (error) {
-    console.error('Checkout error:', error);
-    return NextResponse.json(
-      { error: 'Failed to process order' },
-      { status: 500 }
-    );
+    console.error('Error creating order:', error);
+    return NextResponse.json({ 
+      error: 'Failed to create order' 
+    }, { status: 500 });
   }
 } 

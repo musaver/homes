@@ -173,7 +173,10 @@ export default function RegisterPage() {
 
                         <button 
                           className="th-btn social-btn google-btn w-100 mb-4"
-                          onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+                          onClick={() => {
+                            const lastVisitedPage = localStorage.getItem('lastVisitedPage') || '/dashboard';
+                            signIn('google', { callbackUrl: lastVisitedPage });
+                          }}
                         >
                           <i className="fab fa-google me-2"></i>
                           Continue with Google

@@ -12,6 +12,8 @@ import { normalizeVariationAttributes } from '../../../utils/jsonUtils';
 import { addToCart, clearCart, type CartItem } from '../../../utils/cart';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { calculateTaxes, fetchTaxSettings, formatTaxAmount } from '../../../utils/taxUtils';
+import { storeLastVisitedPage } from '@/utils/navigation';
 
 /* ───────────────────────────────────────────────────────────
    Utilities
@@ -755,6 +757,29 @@ export default function ProjectDetailsPage() {
   const [selectedAddons, setSelectedAddons] = useState<Array<{addonId: string, title: string, price: number, quantity: number, groupTitle: string}>>([]);
   const [addingToCart, setAddingToCart] = useState(false);
 
+  const [taxSettings, setTaxSettings] = useState<{
+    vatTax: { enabled: boolean; type: 'percentage' | 'fixed'; value: number };
+    serviceTax: { enabled: boolean; type: 'percentage' | 'fixed'; value: number };
+  } | null>(null);
+
+  const [taxCalculation, setTaxCalculation] = useState<{
+    vatAmount: number;
+    serviceAmount: number;
+    totalTaxAmount: number;
+    finalAmount: number;
+  }>({
+    vatAmount: 0,
+    serviceAmount: 0,
+    totalTaxAmount: 0,
+    finalAmount: 0,
+  });
+
+  /* Store current URL when component mounts */
+  useEffect(() => {
+    const currentUrl = `/product-details/${slug}`;
+    storeLastVisitedPage(currentUrl);
+  }, [slug]);
+
   /* Clear cart when component mounts */
   useEffect(() => {
     // Clear the cart when opening a product details page
@@ -787,20 +812,50 @@ export default function ProjectDetailsPage() {
   const dimensions         = useMemo(() => deepParseJSON(product?.dimensions),         [product]);
   const variationAttributes= useMemo(() => normalizeVariationAttributes(product?.variationAttributes),[product]);
 
+  /* Fetch tax settings */
+  useEffect(() => {
+    const getTaxSettings = async () => {
+      try {
+        const settings = await fetchTaxSettings();
+        setTaxSettings(settings);
+      } catch (error) {
+        console.error('Error fetching tax settings:', error);
+      }
+    };
+    getTaxSettings();
+  }, []);
+
+  /* Calculate taxes whenever price changes */
+  useEffect(() => {
+    if (taxSettings && product?.taxable) {
+      const taxes = calculateTaxes(currentPrice, taxSettings.vatTax, taxSettings.serviceTax);
+      setTaxCalculation(taxes);
+    } else {
+      setTaxCalculation({
+        vatAmount: 0,
+        serviceAmount: 0,
+        totalTaxAmount: 0,
+        finalAmount: currentPrice,
+      });
+    }
+  }, [currentPrice, taxSettings, product?.taxable]);
+
   /* Add to cart handler */
   const handleAddToCart = async () => {
     if (!product) return;
 
     // Check if user is logged in
     if (!session) {
-      router.push('/login-register');
+      // Store current URL and redirect to login
+      const returnUrl = `/product-details/${slug}`;
+      router.push(`/login-register?callbackUrl=${encodeURIComponent(returnUrl)}`);
       return;
     }
 
     setAddingToCart(true);
 
     try {
-      // Create cart item
+      // Create cart item with tax information
       const cartItem: CartItem = {
         productId: product.id,
         productTitle: product.name,
@@ -810,6 +865,12 @@ export default function ProjectDetailsPage() {
         selectedAddons: selectedAddons,
         productImage: images?.[0] || '',
         productSku: product.sku || '',
+        taxes: {
+          vatAmount: taxCalculation.vatAmount,
+          serviceAmount: taxCalculation.serviceAmount,
+          totalTaxAmount: taxCalculation.totalTaxAmount,
+          finalAmount: taxCalculation.finalAmount,
+        },
       };
 
       // Add to cart
@@ -974,7 +1035,7 @@ export default function ProjectDetailsPage() {
                     <div className="col-xxl-4 col-lg-4">
                       <aside className="sidebar-area">
                         <div className="order-summary-widget">
-                          <h4 className="summary-title"> Summary</h4>
+                          <h4 className="summary-title">Summary</h4>
                           
                           <div className="product-info">
                             <h5 className="product-name">{product.name}</h5>
@@ -993,63 +1054,59 @@ export default function ProjectDetailsPage() {
                               </div>
                             )}
                           </div>
-                            {/*
-                          <hr className="summary-divider" />
-                              */}
-                          <div className="price-breakdown">
-                            
-
-                            
-
-                            {/* Add-ons */}
-                            {product.productType === 'group' && selectedAddons.length > 0 && (
-                              <div className="addons-section">
-                                <div className="addons-list">
-                                  {Object.entries(
-                                    selectedAddons.reduce((groups: Record<string, typeof selectedAddons>, addon) => {
-                                      const groupKey = addon.groupTitle || 'Other';
-                                      if (!groups[groupKey]) groups[groupKey] = [];
-                                      groups[groupKey].push(addon);
-                                      return groups;
-                                    }, {})
-                                  ).map(([groupTitle, groupAddons]) => (
-                                    <div key={groupTitle} className="addon-group">
-                                      {groupTitle !== 'Other' && (
-                                        <div className="addon-group-header">{groupTitle}:</div>
-                                      )}
-                                      {(groupAddons as any[]).map((addon) => (
-                                        <div key={addon.addonId} className="addon-item">
-                                          <span className="addon-name">• {addon.title}</span>
-                                          <span className="addon-price"><CurrencySymbol /> {(addon.price * addon.quantity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
 
                           <hr className="summary-divider" />
-
 
                           <div className="total-section">
+                            {/* Base Price */}
                             <div className="total-row">
-                              <span className="total-label">Total:</span>
+                              <span className="total-label">Base Price:</span>
                               <span className="total-amount">
-                                
-                               
-                                {product.productType === 'simple' && (
-                                  <><CurrencySymbol /> {parseFloat(product.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
-                                )}
-                                {product.productType === 'variable' && (
-                                  Object.values(selectedVariations).every(v => v) 
-                                    ? <><CurrencySymbol /> {currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
-                                    : <><CurrencySymbol /> 0.00</>
-                                )}
-                                {product.productType === 'group' && (
-                                  <><CurrencySymbol /> {(parseFloat(product.price) + selectedAddons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
-                                )}
+                                <CurrencySymbol /> {currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </div>
+
+                            {/* VAT Tax */}
+                            {product?.taxable && taxSettings?.vatTax?.enabled && (
+                              <div className="total-row">
+                                <span className="total-label">
+                                  VAT ({taxSettings.vatTax.type === 'percentage' ? `${taxSettings.vatTax.value}%` : 'Fixed'}):
+                                </span>
+                                <span className="total-amount">
+                                  <CurrencySymbol /> {formatTaxAmount(taxCalculation.vatAmount)}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Service Tax */}
+                            {product?.taxable && taxSettings?.serviceTax?.enabled && (
+                              <div className="total-row">
+                                <span className="total-label">
+                                  Service Tax ({taxSettings.serviceTax.type === 'percentage' ? `${taxSettings.serviceTax.value}%` : 'Fixed'}):
+                                </span>
+                                <span className="total-amount">
+                                  <CurrencySymbol /> {formatTaxAmount(taxCalculation.serviceAmount)}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Total Tax Amount */}
+                            {product?.taxable && taxCalculation.totalTaxAmount > 0 && (
+                              <div className="total-row">
+                                <span className="total-label">Total Tax:</span>
+                                <span className="total-amount">
+                                  <CurrencySymbol /> {formatTaxAmount(taxCalculation.totalTaxAmount)}
+                                </span>
+                              </div>
+                            )}
+
+                            <hr className="summary-divider" />
+
+                            {/* Final Total */}
+                            <div className="total-row grand-total">
+                              <span className="total-label">Total Amount:</span>
+                              <span className="total-amount">
+                                <CurrencySymbol /> {formatTaxAmount(taxCalculation.finalAmount)}
                               </span>
                             </div>
                           </div>
@@ -1219,6 +1276,14 @@ export default function ProjectDetailsPage() {
           display: flex;
           justify-content: space-between;
           align-items: center;
+        }
+
+        .total-row.font-bold {
+          font-weight: bold;
+          font-size: 1.1rem;
+          margin-top: 1rem;
+          padding-top: 1rem;
+          border-top: 1px solid #eee;
         }
 
         .total-label {

@@ -1,0 +1,54 @@
+'use client';
+
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import CurrencySymbol from '@/components/CurrencySymbol';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import { useState, useEffect, useRef } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Script from 'next/script';
+import { getCart, clearCart, type Cart, type CartItem } from '../../utils/cart';
+import { calculateTaxes, fetchTaxSettings } from '../../utils/taxUtils';
+
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
+export default function CheckoutPage() {
+  // ... existing code ...
+
+  return (
+    <>
+      <Header />
+      {/* Google Maps API */}
+      <Script
+        src={`https://maps.googleapis.com/maps/api/js?key=AIzaSyBsxw1IkvR-PMohWJRSVLpc4-tbwDknHK8&libraries=places`}
+        onLoad={handleGoogleMapsLoad}
+      />
+      {/* Checkout Section */}
+      <section className="space-extra-bottom">
+        <div className="container">
+          <div className="row">
+            {/* Checkout Form */}
+            <div className="col-lg-8">
+              <div className="page-single">
+                <div className="page-content">
+                  <div className="auth-card mb-4">
+                    <div className="auth-card-body p-4">
+                      <h3 className="mb-4">Billing Information</h3>
+                      {/* ... rest of the existing code ... */}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+} 

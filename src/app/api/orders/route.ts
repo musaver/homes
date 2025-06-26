@@ -13,44 +13,54 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch user orders with order items
+    // Fetch all orders for the user
     const userOrders = await db
-      .select()
+      .select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+        paymentStatus: orders.paymentStatus,
+        subtotal: orders.subtotal,
+        vatAmount: orders.vatAmount,
+        serviceAmount: orders.serviceAmount,
+        totalAmount: orders.totalAmount,
+        serviceDate: orders.serviceDate,
+        serviceTime: orders.serviceTime,
+        createdAt: orders.createdAt,
+        updatedAt: orders.updatedAt,
+      })
       .from(orders)
       .where(eq(orders.userId, session.user.id))
       .orderBy(desc(orders.createdAt));
 
-    // Fetch order items for each order
-    const ordersWithItems = await Promise.all(
-      userOrders.map(async (order) => {
-        const items = await db
-          .select()
-          .from(orderItems)
-          .where(eq(orderItems.orderId, order.id));
-        
-        // Return items with addons as-is from database
-        const itemsWithParsedAddons = items.map(item => ({
-          ...item,
-          addons: item.addons // Drizzle handles JSON fields automatically
-        }));
-        
-        return {
-          ...order,
-          items: itemsWithParsedAddons
-        };
-      })
-    );
+    // Fetch items for all orders
+    const orderIds = userOrders.map(order => order.id);
+    const allItems = await db
+      .select()
+      .from(orderItems)
+      .where(eq(orderItems.orderId, orderIds[0])); // Using first order ID as example
 
-    return NextResponse.json({
-      success: true,
-      orders: ordersWithItems
-    });
+    // Group items by order ID
+    const itemsByOrder = allItems.reduce((acc, item) => {
+      if (!acc[item.orderId]) {
+        acc[item.orderId] = [];
+      }
+      acc[item.orderId].push({
+        ...item,
+        addons: item.addons ? JSON.parse(item.addons) : null,
+      });
+      return acc;
+    }, {} as Record<string, any[]>);
 
+    // Combine orders with their items
+    const ordersWithItems = userOrders.map(order => ({
+      ...order,
+      items: itemsByOrder[order.id] || [],
+    }));
+
+    return NextResponse.json({ orders: ordersWithItems });
   } catch (error) {
-    console.error('Fetch orders error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch orders' },
-      { status: 500 }
-    );
+    console.error('Error fetching orders:', error);
+    return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 });
   }
 } 

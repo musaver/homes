@@ -2,48 +2,50 @@ import React from 'react';
 import { ClipLoader, BeatLoader, RingLoader } from 'react-spinners';
 
 interface LoadingSpinnerProps {
-  size?: number | 'small' | 'medium' | 'large';
+  size?: 'small' | 'medium' | 'large';
   color?: string;
-  type?: 'clip' | 'beat' | 'ring';
   className?: string;
 }
 
-const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ 
+export default function LoadingSpinner({ 
   size = 'medium', 
-  color = '#2563eb', 
-  type = 'clip',
-  className = '' 
-}) => {
-  // Convert size names to pixel values
-  let spinnerSize: number;
-  if (typeof size === 'string') {
+  color = '#3b82f6',
+  className = ''
+}: LoadingSpinnerProps) {
+  const getSize = () => {
     switch (size) {
-      case 'small': spinnerSize = 20; break;
-      case 'medium': spinnerSize = 35; break;
-      case 'large': spinnerSize = 50; break;
-      default: spinnerSize = 35;
-    }
-  } else {
-    spinnerSize = size;
-  }
-
-  const renderSpinner = () => {
-    switch (type) {
-      case 'beat':
-        return <BeatLoader color={color} size={spinnerSize * 0.6} />;
-      case 'ring':
-        return <RingLoader color={color} size={spinnerSize} />;
-      case 'clip':
+      case 'small':
+        return '16px';
+      case 'large':
+        return '48px';
       default:
-        return <ClipLoader color={color} size={spinnerSize} />;
+        return '24px';
     }
   };
 
   return (
-    <div className={`inline-flex items-center justify-center ${className}`}>
-      {renderSpinner()}
+    <div 
+      className={`loading-spinner ${className}`}
+      style={{
+        width: getSize(),
+        height: getSize(),
+        borderColor: color,
+        borderRightColor: 'transparent'
+      }}
+    >
+      <style jsx>{`
+        .loading-spinner {
+          border: 2px solid;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          display: inline-block;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
-};
-
-export default LoadingSpinner; 
+} 

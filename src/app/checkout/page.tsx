@@ -3,12 +3,15 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import CurrencySymbol from '@/components/CurrencySymbol';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import DateTimePicker from '@/components/DateTimePicker';
+import AddressMap from '@/components/AddressMap';
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Script from 'next/script';
 import { getCart, clearCart, type Cart, type CartItem } from '../../utils/cart';
+import { calculateTaxes, fetchTaxSettings } from '../../utils/taxUtils';
 
 declare global {
   interface Window {
@@ -39,12 +42,30 @@ export default function CheckoutPage() {
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [mapCenter, setMapCenter] = useState({ lat: 25.2048, lng: 55.2708 }); // Dubai coordinates
+  const [isInitializingAutocomplete, setIsInitializingAutocomplete] = useState(false);
   
   // Google Maps refs
   const addressInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<any>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
+
+  const [taxSettings, setTaxSettings] = useState<{
+    vatTax: { enabled: boolean; type: 'percentage' | 'fixed'; value: number };
+    serviceTax: { enabled: boolean; type: 'percentage' | 'fixed'; value: number };
+  } | null>(null);
+
+  const [totalTaxCalculation, setTotalTaxCalculation] = useState<{
+    vatAmount: number;
+    serviceAmount: number;
+    totalTaxAmount: number;
+    finalAmount: number;
+  }>({
+    vatAmount: 0,
+    serviceAmount: 0,
+    totalTaxAmount: 0,
+    finalAmount: 0,
+  });
 
   // Check authentication and load cart
   useEffect(() => {
@@ -78,175 +99,288 @@ export default function CheckoutPage() {
       const response = await fetch('/api/user/profile');
       if (response.ok) {
         const data = await response.json();
-        const userData = data.profile || data; // Handle both nested and direct response
-        console.log('Fetched user profile:', userData);
-        
-        // Auto-fill form fields from user data
+        const userData = data.profile || data;
         setPhone(userData.phone || '');
-        setAddress(userData.address || '');
         setCity(userData.city || '');
         setState(userData.state || '');
         setPostalCode(userData.postalCode || '');
-        
-        // If user has address, try to geocode it to center the map
-        if (userData.address && googleMapsLoaded) {
-          geocodeAddress(userData.address);
-        }
+        setAddress(userData.address || '');
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
     }
   };
 
-  // Geocode address to get coordinates
+  // Geocode address to get coordinates with proper error handling
   const geocodeAddress = (address: string) => {
-    if (!window.google) return;
+    if (!window.google || !address || address.trim().length < 5) {
+      console.log('Skipping geocoding: insufficient data or Google Maps not loaded');
+      return;
+    }
     
     const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ address }, (results: any, status: any) => {
-      if (status === 'OK' && results[0]) {
-        const location = results[0].geometry.location;
-        setMapCenter({ lat: location.lat(), lng: location.lng() });
-      }
-    });
-  };
-
-  // Initialize Google Maps Autocomplete
-  const initializeAutocomplete = () => {
-    if (!window.google || !addressInputRef.current) return;
-
-    const autocomplete = new window.google.maps.places.Autocomplete(
-      addressInputRef.current,
-      {
-        types: ['address'],
-        componentRestrictions: { country: 'ae' }, // Restrict to UAE addresses
-      }
-    );
-
-    autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace();
-      if (place.formatted_address) {
-        setAddress(place.formatted_address);
-        
-        // Update map center if place has geometry
-        if (place.geometry && place.geometry.location) {
-          const location = place.geometry.location;
-          setMapCenter({ lat: location.lat(), lng: location.lng() });
+    
+    // Add a timeout to prevent hanging requests
+    const geocodePromise = new Promise((resolve, reject) => {
+      geocoder.geocode(
+        { 
+          address: address.trim(),
+          region: 'AE' // Bias results to UAE
+        }, 
+        (results: any, status: any) => {
+          if (status === 'OK' && results && results[0]) {
+            const location = results[0].geometry.location;
+            setMapCenter({ lat: location.lat(), lng: location.lng() });
+            console.log('Successfully geocoded address:', address);
+            resolve(results[0]);
+          } else {
+            console.warn('Geocoding failed:', status, 'for address:', address);
+            // Don't reject, just resolve with default coordinates
+            resolve({
+              geometry: {
+                location: new window.google.maps.LatLng(25.2048, 55.2708) // Dubai coordinates
+              }
+            });
+          }
         }
-        
-        // Parse address components
-        if (place.address_components) {
-          let city = '';
-          let state = '';
-          let postalCode = '';
-          
-          place.address_components.forEach((component: any) => {
-            const types = component.types;
-            if (types.includes('locality') || types.includes('administrative_area_level_2')) {
-              city = component.long_name;
-            } else if (types.includes('administrative_area_level_1')) {
-              state = component.long_name;
-            } else if (types.includes('postal_code')) {
-              postalCode = component.long_name;
-            }
-          });
-          
-          setCity(city);
-          setState(state);
-          setPostalCode(postalCode);
-        }
-      }
+      );
     });
 
-    autocompleteRef.current = autocomplete;
-  };
-
-  // Initialize Google Map
-  const initializeMap = () => {
-    if (!window.google || !showMap) return;
-
-    const mapElement = document.getElementById('google-map');
-    if (!mapElement) return;
-
-    const map = new window.google.maps.Map(mapElement, {
-      center: mapCenter,
-      zoom: 13,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-    });
-
-    const marker = new window.google.maps.Marker({
-      position: mapCenter,
-      map: map,
-      draggable: true,
-      title: 'Drag to select your location',
-    });
-
-    // Handle marker drag
-    marker.addListener('dragend', () => {
-      const position = marker.getPosition();
-      if (position) {
-        const lat = position.lat();
-        const lng = position.lng();
-        setMapCenter({ lat, lng });
-        
-        // Reverse geocode to get address
-        const geocoder = new window.google.maps.Geocoder();
-        geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
-          if (status === 'OK' && results[0]) {
-            setAddress(results[0].formatted_address);
-            
-            // Parse address components
-            if (results[0].address_components) {
-              let city = '';
-              let state = '';
-              let postalCode = '';
-              
-              results[0].address_components.forEach((component: any) => {
-                const types = component.types;
-                if (types.includes('locality') || types.includes('administrative_area_level_2')) {
-                  city = component.long_name;
-                } else if (types.includes('administrative_area_level_1')) {
-                  state = component.long_name;
-                } else if (types.includes('postal_code')) {
-                  postalCode = component.long_name;
-                }
-              });
-              
-              setCity(city);
-              setState(state);
-              setPostalCode(postalCode);
-            }
+    // Set a 5-second timeout for geocoding
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        console.warn('Geocoding timeout - using default coordinates');
+        resolve({
+          geometry: {
+            location: new window.google.maps.LatLng(25.2048, 55.2708) // Dubai coordinates
           }
         });
-      }
+      }, 5000);
     });
 
-    mapRef.current = map;
-    markerRef.current = marker;
+    Promise.race([geocodePromise, timeoutPromise])
+      .then((result: any) => {
+        const location = result.geometry.location;
+        setMapCenter({ lat: location.lat(), lng: location.lng() });
+      })
+      .catch(error => {
+        console.error('Geocoding error:', error);
+        // Fall back to default Dubai coordinates
+        setMapCenter({ lat: 25.2048, lng: 55.2708 });
+      });
   };
 
-  // Handle Google Maps script load
-  const handleGoogleMapsLoad = () => {
-    setGoogleMapsLoaded(true);
-    initializeAutocomplete();
-  };
-
-  // Reinitialize autocomplete when Google Maps is loaded
-  useEffect(() => {
-    if (googleMapsLoaded) {
-      initializeAutocomplete();
-      // Re-fetch user profile to center map if user has address
-      if (session?.user) {
-        fetchUserProfile();
-      }
+  // Initialize Google Maps Autocomplete with better error handling
+  const initializeAutocomplete = () => {
+    if (!window.google || !addressInputRef.current || isInitializingAutocomplete) {
+      console.log('Cannot initialize autocomplete: Google Maps not loaded, input ref not available, or already initializing');
+      return;
     }
-  }, [googleMapsLoaded, session]);
+
+    setIsInitializingAutocomplete(true);
+
+    try {
+      // Clear any existing autocomplete
+      if (autocompleteRef.current) {
+        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      }
+
+      const autocomplete = new window.google.maps.places.Autocomplete(
+        addressInputRef.current,
+        {
+          types: ['address'],
+          componentRestrictions: { country: 'ae' }, // Restrict to UAE addresses
+          fields: ['formatted_address', 'geometry', 'address_components'] // Limit fields to reduce quota usage
+        }
+      );
+
+      autocomplete.addListener('place_changed', () => {
+        try {
+          const place = autocomplete.getPlace();
+          
+          if (!place.geometry || !place.geometry.location) {
+            console.warn('No geometry found for selected place');
+            return;
+          }
+
+          const location = place.geometry.location;
+          setMapCenter({ lat: location.lat(), lng: location.lng() });
+          
+          if (place.formatted_address) {
+            setAddress(place.formatted_address);
+          }
+
+          // Parse address components safely
+          if (place.address_components && Array.isArray(place.address_components)) {
+            let newCity = '';
+            let newState = '';
+            let newPostalCode = '';
+
+            place.address_components.forEach((component: any) => {
+              if (!component || !component.types) return;
+
+              const types = component.types;
+              if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+                newCity = component.long_name || '';
+              } else if (types.includes('administrative_area_level_1')) {
+                newState = component.long_name || '';
+              } else if (types.includes('postal_code')) {
+                newPostalCode = component.long_name || '';
+              }
+            });
+
+            if (newCity) setCity(newCity);
+            if (newState) setState(newState);
+            if (newPostalCode) setPostalCode(newPostalCode);
+          }
+        } catch (error) {
+          console.error('Error handling place selection:', error);
+        }
+      });
+
+      autocompleteRef.current = autocomplete;
+      console.log('Autocomplete initialized successfully');
+    } catch (error) {
+      console.error('Error initializing autocomplete:', error);
+    } finally {
+      setIsInitializingAutocomplete(false);
+    }
+  };
+
+  // Initialize Google Map with error handling
+  const initializeMap = () => {
+    console.log('initializeMap called', { google: !!window.google, showMap });
+    
+    if (!window.google || !showMap) {
+      console.log('Cannot initialize map: Google Maps not loaded or map not shown');
+      return;
+    }
+
+    const mapElement = document.getElementById('google-map');
+    console.log('Map element found:', !!mapElement);
+    
+    if (!mapElement) {
+      console.log('Map element not found');
+      return;
+    }
+
+    try {
+      console.log('Creating map with center:', mapCenter);
+      const map = new window.google.maps.Map(mapElement, {
+        center: mapCenter,
+        zoom: 13,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        styles: [], // Use default styling
+      });
+
+      console.log('Creating marker');
+      const marker = new window.google.maps.Marker({
+        position: mapCenter,
+        map: map,
+        draggable: true,
+        title: 'Drag to select your location',
+        animation: window.google.maps.Animation.DROP,
+      });
+
+      // Handle marker drag with debouncing
+      let dragTimeout: NodeJS.Timeout;
+      marker.addListener('dragend', () => {
+        clearTimeout(dragTimeout);
+        dragTimeout = setTimeout(() => {
+          try {
+            const position = marker.getPosition();
+            if (!position) {
+              console.log('No position found for dragged marker');
+              return;
+            }
+
+            const lat = position.lat();
+            const lng = position.lng();
+            setMapCenter({ lat, lng });
+            
+            // Reverse geocode to get address with error handling
+            const geocoder = new window.google.maps.Geocoder();
+            geocoder.geocode(
+              { 
+                location: { lat, lng },
+                region: 'AE' // Bias results to UAE
+              }, 
+              (results: any, status: any) => {
+                if (status === 'OK' && results && results[0]) {
+                  if (results[0].formatted_address) {
+                    setAddress(results[0].formatted_address);
+                  }
+                  
+                  // Parse address components safely
+                  if (results[0].address_components && Array.isArray(results[0].address_components)) {
+                    let newCity = '';
+                    let newState = '';
+                    let newPostalCode = '';
+                    
+                    results[0].address_components.forEach((component: any) => {
+                      if (!component || !component.types) return;
+                      
+                      const types = component.types;
+                      if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+                        newCity = component.long_name || '';
+                      } else if (types.includes('administrative_area_level_1')) {
+                        newState = component.long_name || '';
+                      } else if (types.includes('postal_code')) {
+                        newPostalCode = component.long_name || '';
+                      }
+                    });
+                    
+                    if (newCity) setCity(newCity);
+                    if (newState) setState(newState);
+                    if (newPostalCode) setPostalCode(newPostalCode);
+                  }
+                } else {
+                  console.warn('Reverse geocoding failed:', status);
+                }
+              }
+            );
+          } catch (error) {
+            console.error('Error in marker dragend listener:', error);
+          }
+        }, 500); // Debounce by 500ms
+      });
+
+      mapRef.current = map;
+      markerRef.current = marker;
+      console.log('Map initialized successfully');
+    } catch (error) {
+      console.error('Error initializing map:', error);
+    }
+  };
+
+  // Initialize Google Maps when the script is loaded
+  useEffect(() => {
+    const handleGoogleMapsLoaded = () => {
+      console.log('Google Maps loaded event received');
+      setGoogleMapsLoaded(true);
+      initializeAutocomplete();
+    };
+
+    // Check if Google Maps is already loaded
+    if (window.google && window.google.maps) {
+      console.log('Google Maps already loaded');
+      handleGoogleMapsLoaded();
+    } else {
+      // Listen for the custom event
+      window.addEventListener('google-maps-loaded', handleGoogleMapsLoaded);
+    }
+
+    return () => {
+      window.removeEventListener('google-maps-loaded', handleGoogleMapsLoaded);
+    };
+  }, []);
 
   // Initialize map when showMap or mapCenter changes
   useEffect(() => {
     if (googleMapsLoaded && showMap) {
+      console.log('Initializing map');
       setTimeout(() => initializeMap(), 100); // Small delay to ensure DOM is ready
     }
   }, [googleMapsLoaded, showMap, mapCenter]);
@@ -258,6 +392,27 @@ export default function CheckoutPage() {
       mapRef.current.setCenter(mapCenter);
     }
   }, [mapCenter]);
+
+  // Fetch tax settings
+  useEffect(() => {
+    const getTaxSettings = async () => {
+      try {
+        const settings = await fetchTaxSettings();
+        setTaxSettings(settings);
+      } catch (error) {
+        console.error('Error fetching tax settings:', error);
+      }
+    };
+    getTaxSettings();
+  }, []);
+
+  // Calculate total taxes whenever cart changes
+  useEffect(() => {
+    if (taxSettings && cart.total > 0) {
+      const taxes = calculateTaxes(cart.total, taxSettings.vatTax, taxSettings.serviceTax);
+      setTotalTaxCalculation(taxes);
+    }
+  }, [cart.total, taxSettings]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -293,7 +448,9 @@ export default function CheckoutPage() {
           specialInstructions,
           cartItems: cart.items,
           subtotal: cart.total,
-          total: cart.total, // No tax/shipping for now
+          vatAmount: totalTaxCalculation.vatAmount,
+          serviceAmount: totalTaxCalculation.serviceAmount,
+          total: totalTaxCalculation.finalAmount,
         }),
       });
 
@@ -324,7 +481,16 @@ export default function CheckoutPage() {
   };
 
   if (status === 'loading') {
-    
+    return (
+      <>
+        <Header />
+        <div className="container py-5 text-center">
+          <LoadingSpinner />
+          <p className="mt-3">Loading...</p>
+        </div>
+        <Footer />
+      </>
+    );
   }
 
   if (!session) {
@@ -335,7 +501,7 @@ export default function CheckoutPage() {
     return (
       <>
         <Header />
-        <section className=" space-extra-bottom">
+        <section className="space-extra-bottom">
           <div className="container">
             <div className="row justify-content-center">
               <div className="col-xl-8 col-lg-10">
@@ -368,18 +534,9 @@ export default function CheckoutPage() {
   }
 
   return (
-    <>      
-    <Header />
-      {/* Google Maps API */}
-      <Script
-        src={`https://maps.googleapis.com/maps/api/js?key=AIzaSyBsxw1IkvR-PMohWJRSVLpc4-tbwDknHK8&libraries=places`}
-        onLoad={handleGoogleMapsLoad}
-      />
-      
-      
-
-      {/* Checkout Section */}
-      <section className=" space-extra-bottom">
+    <>
+      <Header />
+      <section className="space-extra-bottom">
         <div className="container">
           <div className="row">
             {/* Checkout Form */}
@@ -443,192 +600,23 @@ export default function CheckoutPage() {
                             <label className="form-label">
                               Address <span className="text-danger">*</span>
                             </label>
-                            <input
-                              ref={addressInputRef}
-                              type="text"
-                              className="form-control"
-                              value={address}
-                              onChange={(e) => setAddress(e.target.value)}
-                              placeholder="Start typing your address..."
-                              required
-                            />
-                            <small className="text-muted">
-                              <i className="fas fa-map-marker-alt me-1"></i>
-                              Start typing and select from suggestions
-                            </small>
-                            
-                            <div className="mt-2">
-                              <button
-                                type="button"
-                                className="btn btn-outline-primary btn-sm"
-                                onClick={() => setShowMap(!showMap)}
-                              >
-                                <i className={`fas ${showMap ? 'fa-eye-slash' : 'fa-map-marked-alt'} me-1`}></i>
-                                {showMap ? 'Hide Map' : 'Show Map & Pin Location'}
-                              </button>
-                            </div>
-                            
-                            {showMap && (
-                              <div className="map-container mt-3">
-                                <div className="d-flex justify-content-between align-items-center mb-2">
-                                  <small className="text-muted">
-                                    <i className="fas fa-hand-pointer me-1"></i>
-                                    Drag the pin to select your exact location
-                                  </small>
-                                  <button
-                                    type="button"
-                                    className="btn btn-outline-secondary btn-sm"
-                                    onClick={() => {
-                                      if (navigator.geolocation) {
-                                        navigator.geolocation.getCurrentPosition(
-                                          (position) => {
-                                            const { latitude, longitude } = position.coords;
-                                            setMapCenter({ lat: latitude, lng: longitude });
-                                            
-                                            // Reverse geocode to get address
-                                            if (window.google) {
-                                              const geocoder = new window.google.maps.Geocoder();
-                                              geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results: any, status: any) => {
-                                                if (status === 'OK' && results[0]) {
-                                                  setAddress(results[0].formatted_address);
-                                                  
-                                                  // Parse address components
-                                                  if (results[0].address_components) {
-                                                    let city = '';
-                                                    let state = '';
-                                                    let postalCode = '';
-                                                    
-                                                    results[0].address_components.forEach((component: any) => {
-                                                      const types = component.types;
-                                                      if (types.includes('locality') || types.includes('administrative_area_level_2')) {
-                                                        city = component.long_name;
-                                                      } else if (types.includes('administrative_area_level_1')) {
-                                                        state = component.long_name;
-                                                      } else if (types.includes('postal_code')) {
-                                                        postalCode = component.long_name;
-                                                      }
-                                                    });
-                                                    
-                                                    setCity(city);
-                                                    setState(state);
-                                                    setPostalCode(postalCode);
-                                                  }
-                                                }
-                                              });
-                                            }
-                                          },
-                                          (error) => {
-                                            console.error('Error getting current location:', error);
-                                            alert('Unable to get your current location. Please check your browser permissions.');
-                                          }
-                                        );
-                                      } else {
-                                        alert('Geolocation is not supported by this browser.');
-                                      }
-                                    }}
-                                  >
-                                    <i className="fas fa-crosshairs me-1"></i>
-                                    Use My Location
-                                  </button>
-                                </div>
-                                <div
-                                  id="google-map"
-                                  style={{
-                                    height: '300px',
-                                    width: '100%',
-                                    borderRadius: '8px',
-                                    border: '1px solid #dee2e6'
-                                  }}
-                                />
+                            <AddressMap onAddressSelect={setAddress} />
+                            {address && (
+                              <div className="mt-2">
+                                {/*
+                                <strong>Selected Address:</strong>
+                                <p className="mb-0 text-muted">{address}</p>
+                                */}
                               </div>
                             )}
                           </div>
 
-                          <div className="col-md-4 mb-3">
-                            <label className="form-label">City</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={city}
-                              onChange={(e) => setCity(e.target.value)}
-                              placeholder="Enter city"
-                            />
-                          </div>
-
-                          <div className="col-md-4 mb-3">
-                            <label className="form-label">State</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={state}
-                              onChange={(e) => setState(e.target.value)}
-                              placeholder="Enter state"
-                            />
-                          </div>
-
-                          <div className="col-md-4 mb-3">
-                            <label className="form-label">Postal Code</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={postalCode}
-                              onChange={(e) => setPostalCode(e.target.value)}
-                              placeholder="Enter postal code"
-                            />
-                          </div>
-
-                          <div className="col-md-6 mb-3">
-                            <label className="form-label">
-                              Service Date <span className="text-danger">*</span>
-                            </label>
-                            <input
-                              type="date"
-                              className="form-control"
-                              value={serviceDate}
-                              onChange={(e) => setServiceDate(e.target.value)}
-                              min={new Date().toISOString().split('T')[0]}
-                              required
-                            />
-                            <small className="text-muted">
-                              <i className="fas fa-calendar-alt me-1"></i>
-                              Select your preferred service date
-                            </small>
-                          </div>
-
-                          <div className="col-md-6 mb-3">
-                            <label className="form-label">
-                              Service Time <span className="text-danger">*</span>
-                            </label>
-                            <select
-                              className="form-control"
-                              value={serviceTime}
-                              onChange={(e) => setServiceTime(e.target.value)}
-                              required
-                            >
-                              <option value="">Select time slot</option>
-                              <option value="09:00">9:00 AM</option>
-                              <option value="09:30">9:30 AM</option>
-                              <option value="10:00">10:00 AM</option>
-                              <option value="10:30">10:30 AM</option>
-                              <option value="11:00">11:00 AM</option>
-                              <option value="11:30">11:30 AM</option>
-                              <option value="12:00">12:00 PM</option>
-                              <option value="12:30">12:30 PM</option>
-                              <option value="13:00">1:00 PM</option>
-                              <option value="13:30">1:30 PM</option>
-                              <option value="14:00">2:00 PM</option>
-                              <option value="14:30">2:30 PM</option>
-                              <option value="15:00">3:00 PM</option>
-                              <option value="15:30">3:30 PM</option>
-                              <option value="16:00">4:00 PM</option>
-                              <option value="16:30">4:30 PM</option>
-                              <option value="17:00">5:00 PM</option>
-                            </select>
-                            <small className="text-muted">
-                              <i className="fas fa-clock me-1"></i>
-                              Available from 9:00 AM to 5:00 PM
-                            </small>
-                          </div>
+                          <DateTimePicker
+                            selectedDate={serviceDate}
+                            selectedTime={serviceTime}
+                            onDateChange={setServiceDate}
+                            onTimeChange={setServiceTime}
+                          />
                         </div>
 
                         {/* Order Notes Section */}
@@ -672,8 +660,7 @@ export default function CheckoutPage() {
                               </>
                             ) : (
                               <>
-                                
-                                Place Order (<CurrencySymbol /> {formatPrice(cart.total)})
+                                Place Order (<CurrencySymbol /> {formatPrice(totalTaxCalculation.finalAmount)})
                               </>
                             )}
                           </button>
@@ -738,12 +725,12 @@ export default function CheckoutPage() {
 
                       <div className="item-total-section">
                         <div className="price-row">
-                                                      <span className="price-label">Item Total:</span>
-                            <span className="price-value">
-                           <CurrencySymbol />
-                              {formatPrice(item.productPrice * item.quantity + 
-                                item.selectedAddons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0)
-                              )}
+                          <span className="price-label">Item Total:</span>
+                          <span className="price-value">
+                            <CurrencySymbol />
+                            {formatPrice(item.productPrice * item.quantity + 
+                              item.selectedAddons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0)
+                            )}
                           </span>
                         </div>
                       </div>
@@ -755,9 +742,40 @@ export default function CheckoutPage() {
                   <hr className="summary-divider" />
 
                   <div className="total-section">
-                    <div className="total-row">
+                    <div className="total-row subtotal-row">
+                      <span className="total-label">Subtotal:</span>
+                      <span className="total-amount"><CurrencySymbol /> {formatPrice(cart.total)}</span>
+                    </div>
+
+                    {taxSettings?.vatTax.enabled && (
+                      <div className="total-row tax-row">
+                        <span className="total-label">
+                          VAT ({taxSettings.vatTax.type === 'percentage' ? `${taxSettings.vatTax.value}%` : 'Fixed'}):
+                        </span>
+                        <span className="total-amount">
+                          <CurrencySymbol /> {formatPrice(totalTaxCalculation.vatAmount)}
+                        </span>
+                      </div>
+                    )}
+
+                    {taxSettings?.serviceTax.enabled && (
+                      <div className="total-row tax-row">
+                        <span className="total-label">
+                          Service Tax ({taxSettings.serviceTax.type === 'percentage' ? `${taxSettings.serviceTax.value}%` : 'Fixed'}):
+                        </span>
+                        <span className="total-amount">
+                          <CurrencySymbol /> {formatPrice(totalTaxCalculation.serviceAmount)}
+                        </span>
+                      </div>
+                    )}
+
+                    <hr className="summary-divider" />
+
+                    <div className="total-row grand-total-row">
                       <span className="total-label">Total:</span>
-                                                    <span className="total-amount"><CurrencySymbol /> {formatPrice(cart.total)}</span>
+                      <span className="total-amount">
+                        <CurrencySymbol /> {formatPrice(totalTaxCalculation.finalAmount)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -768,186 +786,200 @@ export default function CheckoutPage() {
       </section>
       <Footer />
       <style jsx>{`
-  .checkout-sidebar {
-    position: sticky;
-    top: 120px;
-    align-self: flex-start;
-  }
+        .checkout-sidebar {
+          position: sticky;
+          top: 120px;
+          align-self: flex-start;
+        }
 
-  .order-summary-widget {
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 24px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-    border: 1px solid #e5e7eb;
-    margin-bottom: 2rem;
-  }
+        .order-summary-widget {
+          background: #ffffff;
+          border-radius: 12px;
+          padding: 24px;
+          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+          border: 1px solid #e5e7eb;
+          margin-bottom: 2rem;
+        }
 
-  .summary-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #1f2937;
-    margin-bottom: 1.5rem;
-    padding-bottom: 0;
-  }
+        .summary-title {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #1f2937;
+          margin-bottom: 1.5rem;
+          padding-bottom: 0;
+        }
 
-  .order-item {
-    margin-bottom: 1.5rem;
-  }
+        .order-item {
+          margin-bottom: 1.5rem;
+        }
 
-  .product-info {
-    margin-bottom: 1rem;
-  }
+        .product-info {
+          margin-bottom: 1rem;
+        }
 
-  .product-name {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #1f2937;
-    margin-bottom: 0.5rem;
-    line-height: 1.4;
-  }
+        .product-name {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #1f2937;
+          margin-bottom: 0.5rem;
+          line-height: 1.4;
+        }
 
-  .variations-display {
-    font-size: 0.95rem;
-    color: #6b7280;
-    margin-bottom: 0.5rem;
-  }
+        .variations-display {
+          font-size: 0.95rem;
+          color: #6b7280;
+          margin-bottom: 0.5rem;
+        }
 
-  .variation-item {
-    background: #f2f2f2;
-    padding: 5px 12px;
-    margin-bottom: 5px;
-    display: inline-block;
-    -webkit-border-radius: 24px;
-    -moz-border-radius: 24px;
-    border-radius: 24px;
-    font-weight: 500;
-    color: black;
-    margin-right: 0.5rem;
-  }
+        .variation-item {
+          background: #f2f2f2;
+          padding: 5px 12px;
+          margin-bottom: 5px;
+          display: inline-block;
+          border-radius: 24px;
+          font-weight: 500;
+          color: black;
+          margin-right: 0.5rem;
+        }
 
-  .addons-section {
-    margin-bottom: 0.75rem;
-  }
+        .addons-section {
+          margin-bottom: 0.75rem;
+        }
 
-  .addons-list {
-    margin-left: 0;
-  }
+        .addons-list {
+          margin-left: 0;
+        }
 
-  .addon-group {
-    margin-bottom: 0.75rem;
-  }
+        .addon-group {
+          margin-bottom: 0.75rem;
+        }
 
-  .addon-group:last-child {
-    margin-bottom: 0;
-  }
+        .addon-group:last-child {
+          margin-bottom: 0;
+        }
 
-  .addon-group-header {
-    font-size: 0.9rem;
-    color: #374151;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-    margin-left: 0.25rem;
-  }
+        .addon-group-header {
+          font-size: 0.9rem;
+          color: #374151;
+          font-weight: 600;
+          margin-bottom: 0.25rem;
+          margin-left: 0.25rem;
+        }
 
-  .addon-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-    padding-left: 0.5rem;
-  }
+        .addon-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.5rem;
+          padding-left: 0.5rem;
+        }
 
-  .addon-name {
-    font-size: 0.9rem;
-    color: #6b7280;
-    flex: 1;
-  }
+        .addon-name {
+          font-size: 0.9rem;
+          color: #6b7280;
+          flex: 1;
+        }
 
-  .addon-price {
-    font-size: 0.9rem;
-    color: #1f2937;
-    font-weight: 500;
-  }
+        .addon-price {
+          font-size: 0.9rem;
+          color: #1f2937;
+          font-weight: 500;
+        }
 
-  .item-total-section {
-    margin-bottom: 1rem;
-  }
+        .item-total-section {
+          margin-bottom: 1rem;
+        }
 
-  .price-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
-  }
+        .price-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.75rem;
+        }
 
-  .price-label {
-    font-size: 0.95rem;
-    color: #6b7280;
-    font-weight: 400;
-  }
+        .price-label {
+          font-size: 0.95rem;
+          color: #6b7280;
+          font-weight: 400;
+        }
 
-  .price-value {
-    font-size: 0.95rem;
-    color: #1f2937;
-    font-weight: 500;
-  }
+        .price-value {
+          font-size: 0.95rem;
+          color: #1f2937;
+          font-weight: 500;
+        }
 
-  .item-divider {
-    border: none;
-    border-top: 1px solid #f3f4f6;
-    margin: 1rem 0;
-  }
+        .item-divider {
+          border: none;
+          border-top: 1px solid #f3f4f6;
+          margin: 1rem 0;
+        }
 
-  .summary-divider {
-    border: none;
-    border-top: 1px solid #e5e7eb;
-    margin: 0.75rem 0;
-  }
+        .summary-divider {
+          border: none;
+          border-top: 1px solid #e5e7eb;
+          margin: 0.75rem 0;
+        }
 
-  .total-section {
-    padding-top: 0.5rem;
-  }
+        .total-section {
+          padding-top: 0.5rem;
+        }
 
-  .total-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
+        .total-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
 
-  .total-label {
-    font-size: 1.1rem;
-    color: #1f2937;
-    font-weight: 600;
-  }
+        .total-label {
+          font-size: 1.1rem;
+          color: #1f2937;
+          font-weight: 600;
+        }
 
-  .total-amount {
-    font-size: 1.25rem;
-    color: #3b82f6;
-    font-weight: 700;
-  }
+        .total-amount {
+          font-size: 1.25rem;
+          color: #3b82f6;
+          font-weight: 700;
+        }
 
-  /* Responsive adjustments */
-  @media (max-width: 768px) {
-    .checkout-sidebar {
-      position: static;
-      top: auto;
-    }
-    
-    .order-summary-widget {
-      padding: 20px;
-      margin-bottom: 1rem;
-    }
-    
-    .summary-title {
-      font-size: 1.3rem;
-    }
-    
-    .total-amount {
-      font-size: 1.15rem;
-    }
-  }
-`}</style>
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+          .checkout-sidebar {
+            position: static;
+            top: auto;
+          }
+          
+          .order-summary-widget {
+            padding: 20px;
+            margin-bottom: 1rem;
+          }
+          
+          .summary-title {
+            font-size: 1.3rem;
+          }
+          
+          .total-amount {
+            font-size: 1.15rem;
+          }
+        }
+
+        .subtotal-row {
+          color: #6b7280;
+          font-size: 0.95rem;
+        }
+
+        .tax-row {
+          color: #6b7280;
+          font-size: 0.95rem;
+          margin: 8px 0;
+        }
+
+        .grand-total-row {
+          margin-top: 12px;
+          font-weight: 700;
+        }
+      `}</style>
     </>
   );
 } 

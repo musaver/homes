@@ -1,4 +1,3 @@
-
 import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
@@ -42,6 +41,9 @@ export default function RootLayout({
         <link rel="stylesheet" href="/assets/css/magnific-popup.min.css" />
         <link rel="stylesheet" href="/assets/css/swiper-bundle.min.css" />
         <link rel="stylesheet" href="/assets/css/style.css" />
+        
+        {/* jQuery Datetimepicker */}
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.min.css" />
         
         {/* AOS Animation */}
         <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
@@ -96,6 +98,7 @@ export default function RootLayout({
         <Script src="/assets/js/imagesloaded.pkgd.min.js" strategy="afterInteractive" />
         <Script src="/assets/js/isotope.pkgd.min.js" strategy="afterInteractive" />
         <Script src="https://unpkg.com/aos@2.3.1/dist/aos.js" strategy="afterInteractive" />
+        <Script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.full.min.js" strategy="afterInteractive" />
         <Script src="/assets/js/main.js" strategy="afterInteractive" />
       </body>
     </html>

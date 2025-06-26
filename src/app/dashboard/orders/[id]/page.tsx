@@ -40,6 +40,9 @@ interface Order {
   serviceDate?: string;
   serviceTime?: string;
   items: OrderItem[];
+  subtotal?: string;
+  vatAmount?: string;
+  serviceAmount?: string;
 }
 
 export default function OrderDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -354,37 +357,6 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                   </div>
                 )}
 
-              </div>
-
-                {/* Right Column */}
-              <div className="right-column">
-                
-                {/* Price Summary */}
-                <div className="summary-card">
-                  <h3 className="summary-title">Price Summary</h3>
-                  
-                  <div className="summary-item">
-                    <span>Order Total</span>
-                    <span><CurrencySymbol /> {formatPrice(order.totalAmount)}</span>
-                  </div>
-                  
-                  
-                  
-                  <div className="summary-divider"></div>
-                  
-                  <div className="summary-item">
-                    <span>Subtotal</span>
-                    <span><CurrencySymbol /> {formatPrice(order.totalAmount)}</span>
-                  </div>
-                  
-                  <div className="summary-divider"></div>
-                  
-                  <div className="summary-item total">
-                    <span>Total</span>
-                    <span><CurrencySymbol /> {formatPrice(order.totalAmount)}</span>
-                  </div>
-                </div>
-
                 {/* Service Details */}
                 <div className="details-card">
                   <h3 className="card-title">Service Details</h3>
@@ -454,6 +426,58 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                   </div>
                 </div>
 
+                
+
+              </div>
+
+                {/* Right Column */}
+              <div className="right-column">
+                
+                {/* Price Summary */}
+                <div className="summary-card">
+                  <h3 className="summary-title">Price Summary</h3>
+                  
+                  {/* Items Breakdown */}
+                  {order.items.map((item, index) => (
+                    <div key={index} className="summary-item">
+                      <span>{item.productName}</span>
+                      <span><CurrencySymbol /> {formatPrice(item.price)}</span>
+                    </div>
+                  ))}
+                  
+                  <div className="summary-divider"></div>
+                  
+                  {/* Base Total */}
+                  <div className="summary-item">
+                    <span>Subtotal</span>
+                    <span><CurrencySymbol /> {formatPrice(order.subtotal || order.totalAmount)}</span>
+                  </div>
+
+                  {/* VAT Tax */}
+                  {order.vatAmount && parseFloat(order.vatAmount) > 0 && (
+                    <div className="summary-item tax-item">
+                      <span>VAT Tax</span>
+                      <span><CurrencySymbol /> {formatPrice(order.vatAmount)}</span>
+                    </div>
+                  )}
+
+                  {/* Service Tax */}
+                  {order.serviceAmount && parseFloat(order.serviceAmount) > 0 && (
+                    <div className="summary-item tax-item">
+                      <span>Service Tax</span>
+                      <span><CurrencySymbol /> {formatPrice(order.serviceAmount)}</span>
+                    </div>
+                  )}
+                  
+                  <div className="summary-divider"></div>
+                  
+                  {/* Final Total */}
+                  <div className="summary-item total">
+                    <span>Total</span>
+                    <span><CurrencySymbol /> {formatPrice(order.totalAmount)}</span>
+                  </div>
+                </div>
+
                 {/* Assigned Technician */}
                 <div className="technician-card">
                   <h3 className="card-title">Assigned Technician</h3>
@@ -481,6 +505,8 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                   
                   
                 </div>
+
+                
 
               </div>
 
@@ -1194,6 +1220,14 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
         .status-filters :global(button.active) i,
         .filter-btn.active i {
           transform: scale(1.05) !important;
+        }
+
+        .tax-item {
+          font-size: 0.9rem;
+          color: #6b7280;
+          padding-left: 12px;
+          border-left: 2px solid #e5e7eb;
+          margin: 4px 0;
         }
       `}</style>
     </>

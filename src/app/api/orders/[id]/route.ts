@@ -3,11 +3,11 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { orders, orderItems } from '@/lib/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     // Check authentication
@@ -16,16 +16,33 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: orderId } = await params;
-
-    // Fetch specific order for the user
+    // Fetch order with all its details
     const [order] = await db
-      .select()
+      .select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+        paymentStatus: orders.paymentStatus,
+        subtotal: orders.subtotal,
+        vatAmount: orders.vatAmount,
+        serviceAmount: orders.serviceAmount,
+        totalAmount: orders.totalAmount,
+        email: orders.email,
+        phone: orders.phone,
+        shippingAddress1: orders.shippingAddress1,
+        shippingAddress2: orders.shippingAddress2,
+        shippingCity: orders.shippingCity,
+        shippingState: orders.shippingState,
+        shippingPostalCode: orders.shippingPostalCode,
+        shippingCountry: orders.shippingCountry,
+        notes: orders.notes,
+        serviceDate: orders.serviceDate,
+        serviceTime: orders.serviceTime,
+        createdAt: orders.createdAt,
+        updatedAt: orders.updatedAt,
+      })
       .from(orders)
-      .where(and(
-        eq(orders.id, orderId),
-        eq(orders.userId, session.user.id)
-      ))
+      .where(eq(orders.id, params.id))
       .limit(1);
 
     if (!order) {
@@ -36,27 +53,20 @@ export async function GET(
     const items = await db
       .select()
       .from(orderItems)
-      .where(eq(orderItems.orderId, orderId));
+      .where(eq(orderItems.orderId, order.id));
 
-    // Return items with addons as-is from database
-    const itemsWithParsedAddons = items.map(item => ({
-      ...item,
-      addons: item.addons // Drizzle handles JSON fields automatically
-    }));
+    // Format the response
+    const formattedOrder = {
+      ...order,
+      items: items.map(item => ({
+        ...item,
+        addons: item.addons ? JSON.parse(item.addons) : null,
+      })),
+    };
 
-    return NextResponse.json({
-      success: true,
-      order: {
-        ...order,
-        items: itemsWithParsedAddons
-      }
-    });
-
+    return NextResponse.json({ order: formattedOrder });
   } catch (error) {
-    console.error('Fetch order error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch order' },
-      { status: 500 }
-    );
+    console.error('Error fetching order:', error);
+    return NextResponse.json({ error: 'Failed to fetch order' }, { status: 500 });
   }
 } 

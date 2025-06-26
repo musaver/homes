@@ -50,25 +50,40 @@ export async function sendOrderConfirmationEmail(
   to: string, 
   orderNumber: string, 
   customerName: string, 
-  orderTotal: number,
+  orderAmounts: {
+    subtotal: number;
+    vatAmount: number;
+    serviceAmount: number;
+    total: number;
+  },
   orderItems: Array<{
     productName: string;
     quantity: number;
     price: number;
     variations?: string;
     addons?: string;
+    taxes?: {
+      vatAmount: number;
+      serviceAmount: number;
+      totalTaxAmount: number;
+      finalAmount: number;
+    };
   }>,
   serviceDate?: string,
   serviceTime?: string,
   specialInstructions?: string
 ) {
   const itemsText = orderItems.map(item => {
-            let itemText = `• ${item.productName} (Qty: ${item.quantity}) - ${String.fromCharCode(0xe001)} ${item.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    let itemText = `• ${item.productName} (Qty: ${item.quantity}) - ${String.fromCharCode(0xe001)} ${item.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     if (item.variations) {
       itemText += `\n  Variations: ${item.variations}`;
     }
     if (item.addons) {
       itemText += `\n  Add-ons: ${item.addons}`;
+    }
+    if (item.taxes) {
+      itemText += `\n  VAT (${item.taxes.vatAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+      itemText += `\n  Service Tax (${item.taxes.serviceAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
     }
     return itemText;
   }).join('\n\n');
@@ -103,7 +118,10 @@ Thank you for your order! We've received your order and it's being processed.
 
 Order Details:
 Order Number: ${orderNumber}
-Total Amount: ${String.fromCharCode(0xe001)} ${orderTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${formatServiceDateTime()}
+Subtotal: ${String.fromCharCode(0xe001)} ${orderAmounts.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+VAT: ${String.fromCharCode(0xe001)} ${orderAmounts.vatAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+Service Tax: ${String.fromCharCode(0xe001)} ${orderAmounts.serviceAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+Total Amount: ${String.fromCharCode(0xe001)} ${orderAmounts.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${formatServiceDateTime()}
 
 Items Ordered:
 ${itemsText}${specialInstructions ? `\n\nSpecial Instructions:\n${specialInstructions}` : ''}
