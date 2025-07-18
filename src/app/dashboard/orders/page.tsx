@@ -364,7 +364,7 @@ export default function ServicesPage() {
         .filters-section {
           background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
           padding: 32px 24px;
-          border-radius: 20px;
+          border-radius: 21px;
           margin-bottom: 32px;
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
           border: 1px solid #e2e8f0;
