@@ -118,9 +118,21 @@ export async function GET(
       addons: item.addons ? JSON.parse(item.addons as string) : null
     }));
 
+    // Parse tax amounts from comma-separated string
+    const parseTaxAmounts = (taxAmountString: string | null) => {
+      if (!taxAmountString) return { vatAmount: 0, serviceAmount: 0 };
+      
+      const [vatAmount, serviceAmount] = taxAmountString.split(',').map(amount => parseFloat(amount.trim()) || 0);
+      return { vatAmount, serviceAmount };
+    };
+
+    const { vatAmount, serviceAmount } = parseTaxAmounts(order.taxAmount);
+
     // Combine order with items and user info, matching admin panel structure
     const orderWithDetails = {
       ...order,
+      vatAmount,
+      serviceAmount,
       items: itemsWithParsedAddons,
       user: {
         id: userRecord.id,

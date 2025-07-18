@@ -9,16 +9,6 @@ import Footer from '@/components/Footer';
 import CurrencySymbol from '@/components/CurrencySymbol';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
-interface OrderItem {
-  id: string;
-  productName: string;
-  variantTitle?: string;
-  quantity: number;
-  price: string;
-  totalPrice: string;
-  addons?: any;
-}
-
 interface Order {
   id: string;
   orderNumber: string;
@@ -29,16 +19,22 @@ interface Order {
   updatedAt: string;
   serviceDate?: string;
   serviceTime?: string;
-  items: OrderItem[];
+  items: Array<{
+    id: string;
+    productName: string;
+    variantTitle?: string;
+    quantity: number;
+    price: string;
+    totalPrice: string;
+  }>;
 }
 
-export default function OrdersPage() {
+export default function ServicesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -58,10 +54,8 @@ export default function OrdersPage() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
-      console.log('🔍 Orders Page: Starting to fetch orders');
-      console.log('🔍 Orders Page: Session data:', {
+      console.log('🔍 Services: Starting to fetch orders');
+      console.log('🔍 Services: Session data:', {
         hasSession: !!session,
         userId: session?.user?.id,
         userEmail: session?.user?.email,
@@ -75,26 +69,22 @@ export default function OrdersPage() {
           'Content-Type': 'application/json',
         },
       });
-      
-      console.log('🔍 Orders Page: Orders response status:', response.status);
+      console.log('🔍 Services: Orders response status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 Orders Page: Orders data received:', {
-          orderCount: data?.length || 0,
+        console.log('🔍 Services: Orders data received:', {
+          orderCount: Array.isArray(data) ? data.length : 0,
           isArray: Array.isArray(data)
         });
-        
         // Handle the new API response format (direct array instead of wrapped object)
         setOrders(Array.isArray(data) ? data : []);
       } else {
         const errorData = await response.json();
-        console.error('❌ Orders Page: Failed to fetch orders:', errorData);
-        setError(errorData.error || 'Failed to fetch orders');
+        console.error('❌ Services: Failed to fetch orders:', errorData);
       }
-    } catch (error: any) {
-      console.error('❌ Orders Page: Error fetching orders:', error);
-      setError('An error occurred while fetching orders');
+    } catch (error) {
+      console.error('❌ Services: Error fetching orders:', error);
     } finally {
       setLoading(false);
     }
@@ -121,6 +111,31 @@ export default function OrdersPage() {
     setFilteredOrders(filtered);
   };
 
+  if (status === 'loading' || loading) {
+    return (
+      <>
+        <Header />
+        <section className="space-top space-extra-bottom">
+          <div className="container">
+            <div className="row justify-content-center">
+              <div className="col-lg-8">
+                <div className="text-center">
+                                  <LoadingSpinner size="medium" color="#0d6efd" />
+                  <h3 className="mt-3">Loading Services...</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <Footer />
+      </>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
+
   const getStatusColor = (status: string) => {
     const colors = {
       'pending': '#F59E0B',
@@ -143,9 +158,8 @@ export default function OrdersPage() {
     return 'fas fa-tools';
   };
 
-  const formatPrice = (amount: string | number) => {
-    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatPrice = (amount: number) => {
+    return amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const formatDate = (dateString: string) => {
@@ -188,62 +202,39 @@ export default function OrdersPage() {
 
   const statusCounts = getStatusCounts();
 
-  if (status === 'loading' || loading) {
-    return (
-      <>
-        <Header />
-        <section className="space-top space-extra-bottom">
-          <div className="container">
-            <div className="row justify-content-center">
-              <div className="col-lg-8">
-                <div className="text-center">
-                  <LoadingSpinner size="medium" color="#0d6efd" />
-                  <h3 className="mt-3">Loading Orders...</h3>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-        <Footer />
-      </>
-    );
-  }
-
-  if (!session) {
-    return null;
-  }
-
   return (
     <>
       <Header />
       
-      <div className="orders-container">
-        {/* Navigation */}
+
+      <div className="services-container">
+        
+        {/* New Navigation */}
         <div className="filters-section">
           <div className="container">
             <div className="status-filters">
               <Link className="filter-btn" href="/dashboard"><i className="fas fa-th-large"></i> Dashboard </Link>
               <Link className="filter-btn" href="/dashboard/profile"><i className="fas fa-user"></i> Profile </Link>
-              <Link className="filter-btn active" href="/dashboard/orders"><i className="fas fa-shopping-cart"></i> Orders </Link>
+              <Link className="filter-btn active" href="/dashboard/services"><i className="fas fa-shopping-cart"></i> Orders </Link>
               <button className="filter-btn" onClick={() => signOut({ callbackUrl: '/login-register' })}><i className="fas fa-sign-out-alt"></i> Logout</button>
             </div>
           </div>
         </div>
 
-        {/* Orders Content */}
-        <div className="orders-content">
+        {/* Services Content */}
+        <div className="services-content">
           <div className="container">
             
             {/* Page Header */}
             <div className="page-header">
               <div className="header-info">
-                <h2 className="page-title">My Orders</h2>
+                <h2 className="page-title">All Services</h2>
                 <p className="page-subtitle">Complete history of your service bookings</p>
               </div>
               <div className="header-stats">
                 <div className="stat-item">
                   <span className="stat-number">{orders.length}</span>
-                  <span className="stat-label">Total Orders</span>
+                  <span className="stat-label">Total Services</span>
                 </div>
                 <div className="stat-item">
                   <span className="stat-number">{statusCounts.pending + statusCounts.confirmed + statusCounts.processing + statusCounts.shipped}</span>
@@ -256,154 +247,116 @@ export default function OrdersPage() {
               </div>
             </div>
 
-            {/* Error State */}
-            {error && (
-              <div className="error-state">
-                <div className="alert alert-danger">
-                  <i className="fas fa-exclamation-triangle me-2"></i>
-                  {error}
-                  <button 
-                    className="btn btn-sm btn-outline-danger ms-3"
-                    onClick={fetchOrders}
-                  >
-                    Try Again
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Filters */}
-            {!error && (
-              <div className="filters-controls">
-                <div className="row">
-                  <div className="col-md-6">
-                    <div className="search-box">
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Search orders by number or service..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                      <i className="fas fa-search search-icon"></i>
-                    </div>
-                  </div>
-                  <div className="col-md-6">
-                    <select
-                      className="form-select"
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                    >
-                      <option value="all">All Status ({statusCounts.all})</option>
-                      <option value="pending">Pending ({statusCounts.pending})</option>
-                      <option value="confirmed">Confirmed ({statusCounts.confirmed})</option>
-                      <option value="processing">Processing ({statusCounts.processing})</option>
-                      <option value="shipped">Shipped ({statusCounts.shipped})</option>
-                      <option value="delivered">Delivered ({statusCounts.delivered})</option>
-                      <option value="cancelled">Cancelled ({statusCounts.cancelled})</option>
-                    </select>
-                  </div>
+            <div className="filters-section">
+              <div className="search-box">
+                <div className="search-input-wrapper">
+                  <i className="fas fa-search search-icon"></i>
+                  <input
+                    type="text"
+                    placeholder="Search by order number or service name..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="search-input"
+                  />
                 </div>
               </div>
-            )}
-
-            {/* Orders List */}
-            {!error && (
-              <div className="orders-section">
-                {filteredOrders.length > 0 ? (
-                  <div className="orders-list">
-                    {filteredOrders.map((order) => (
-                      <div key={order.id} className="order-card">
-                        <div className="order-header">
-                          <div className="order-info">
-                            <h4 className="order-number">#{order.orderNumber}</h4>
-                            <div className="order-meta">
-                              <span className="order-date">
-                                <i className="fas fa-calendar-alt me-1"></i>
-                                Placed on {formatDate(order.createdAt)}
-                              </span>
-                              {order.serviceDate && order.serviceTime && (
-                                <span className="service-schedule">
-                                  <i className="fas fa-clock me-1"></i>
-                                  Scheduled for {formatServiceDate(order.serviceDate)} at {formatServiceTime(order.serviceTime)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="order-status">
-                            <span 
-                              className="status-badge" 
-                              style={{ backgroundColor: getStatusColor(order.status) }}
-                            >
-                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="order-items">
-                          {order.items.map((item, index) => (
-                            <div key={item.id} className="order-item">
-                              <div className="item-icon">
-                                <i className={getServiceIcon(item.productName)}></i>
-                              </div>
-                              <div className="item-details">
-                                <h5 className="item-name">{item.productName}</h5>
-                                {item.variantTitle && (
-                                  <p className="item-variant">{item.variantTitle}</p>
-                                )}
-                                <p className="item-quantity">Quantity: {item.quantity}</p>
-                              </div>
-                              <div className="item-price">
-                                <CurrencySymbol /> {formatPrice(item.totalPrice)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        <div className="order-footer">
-                          <div className="order-total">
-                            <strong>
-                              Total: <CurrencySymbol /> {formatPrice(order.totalAmount)}
-                            </strong>
-                          </div>
-                          <div className="order-actions">
-                            <Link 
-                              href={`/dashboard/orders/${order.id}`} 
-                              className="btn btn-primary btn-sm"
-                            >
-                              View Details
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="empty-state">
-                    <i className="fas fa-shopping-cart empty-icon"></i>
-                    <h3>No Orders Found</h3>
-                    <p>
-                      {searchTerm || statusFilter !== 'all' 
-                        ? 'No orders match your current filters. Try adjusting your search or filter criteria.'
-                        : 'You haven\'t placed any orders yet. Start by exploring our available services.'
-                      }
-                    </p>
-                    {(!searchTerm && statusFilter === 'all') && (
-                      <Link href="/" className="btn btn-primary mt-3">
-                        Explore Services
-                      </Link>
-                    )}
-                  </div>
-                )}
+              
+              <div className="status-filters">
+                {[
+                  { key: 'all', label: 'All', count: statusCounts.all },
+                  { key: 'pending', label: 'Pending', count: statusCounts.pending },
+                  { key: 'confirmed', label: 'Confirmed', count: statusCounts.confirmed },
+                  { key: 'processing', label: 'Processing', count: statusCounts.processing },
+                  { key: 'shipped', label: 'Shipped', count: statusCounts.shipped },
+                  { key: 'delivered', label: 'Delivered', count: statusCounts.delivered },
+                  { key: 'cancelled', label: 'Cancelled', count: statusCounts.cancelled },
+                ].map((filter) => (
+                  <button
+                    key={filter.key}
+                    onClick={() => setStatusFilter(filter.key)}
+                    className={`filter-btn ${statusFilter === filter.key ? 'active' : ''}`}
+                  >
+                    {filter.label} ({filter.count})
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
+
+            {/* Services List */}
+            <div className="services-section">
+              {filteredOrders.length > 0 ? (
+                <div className="services-list">
+                  {filteredOrders.map((order) => (
+                    <div key={order.id} className="service-card">
+                      <div className="service-icon">
+                        <i className={getServiceIcon(order.items[0]?.productName || 'Service')}></i>
+                      </div>
+                      <div className="service-info">
+                        <h4 className="service-title">
+                          {order.items[0]?.productName || 'Service Order'}
+                        </h4>
+                        <div className="service-meta">
+                          <span className="service-id">#{order.orderNumber}</span>
+                          <span className="service-separator">•</span>
+                          <span className="service-date">Booked on {formatDate(order.createdAt)}</span>
+                        </div>
+                        {order.serviceDate && order.serviceTime && (
+                          <div className="service-schedule">
+                            <i className="fas fa-calendar-alt me-1"></i>
+                            <span className="schedule-date">{formatServiceDate(order.serviceDate)}</span>
+                            <span className="service-separator">•</span>
+                            <i className="fas fa-clock me-1"></i>
+                            <span className="schedule-time">{formatServiceTime(order.serviceTime)}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="service-status">
+                        <span 
+                          className="status-badge" 
+                          style={{ backgroundColor: getStatusColor(order.status) }}
+                        >
+                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        </span>
+                      </div>
+                      <div className="service-price">
+                        <CurrencySymbol /> {formatPrice(parseFloat(order.totalAmount))}
+                      </div>
+                      <div className="service-action">
+                        <Link href={`/dashboard/orders/${order.id}`} className="view-details-btn">
+                          View Details
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <i className="fas fa-tools empty-icon"></i>
+                  <h3>No Services Found</h3>
+                  <p>
+                    {searchTerm || statusFilter !== 'all' 
+                      ? 'No services match your current filters. Try adjusting your search or filter criteria.'
+                      : 'You haven\'t booked any services yet. Start by exploring our available services.'
+                    }
+                  </p>
+                  {(!searchTerm && statusFilter === 'all') && (
+                    <Link href="/" className="btn btn-primary mt-3">
+                      Explore Services
+                    </Link>
+                  )}
+                </div>
+              )}
+            </div>
 
           </div>
         </div>
       </div>
       
+      <Footer />
+      
       <style jsx>{`
-        .orders-container {
+        .services-container {
           min-height: 100vh;
           background: #f8fafc;
         }
@@ -427,6 +380,8 @@ export default function OrdersPage() {
           margin: 0 auto;
         }
 
+        .status-filters :global(a),
+        .status-filters :global(button),
         .filter-btn {
           border-radius: 100px;
           display: flex !important;
@@ -448,6 +403,27 @@ export default function OrdersPage() {
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
         }
 
+        .status-filters :global(a)::before,
+        .status-filters :global(button)::before,
+        .filter-btn::before {
+          content: '' !important;
+          position: absolute !important;
+          top: 0 !important;
+          left: -100% !important;
+          width: 100% !important;
+          height: 100% !important;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent) !important;
+          transition: left 0.5s ease !important;
+        }
+
+        .status-filters :global(a):hover::before,
+        .status-filters :global(button):hover::before,
+        .filter-btn:hover::before {
+          left: 100% !important;
+        }
+
+        .status-filters :global(a):hover,
+        .status-filters :global(button):hover,
         .filter-btn:hover {
           border-color: var(--theme-color, #2A07F9) !important;
           color: var(--theme-color, #2A07F9) !important;
@@ -455,13 +431,218 @@ export default function OrdersPage() {
           box-shadow: 0 12px 24px rgba(42, 7, 249, 0.15) !important;
         }
 
+        .status-filters :global(a.active),
+        .status-filters :global(button.active),
         .filter-btn.active {
           border-color: var(--theme-color, #2A07F9) !important;
           transform: translateY(-3px) !important;
           box-shadow: 0 12px 24px rgba(42, 7, 249, 0.25) !important;
         }
 
-        .orders-content {
+        .status-filters :global(a.active)::before,
+        .status-filters :global(button.active)::before,
+        .filter-btn.active::before {
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent) !important;
+        }
+
+        .status-filters :global(a.active):hover,
+        .status-filters :global(button.active):hover,
+        .filter-btn.active:hover {
+          transform: translateY(-4px) !important;
+          box-shadow: 0 16px 32px rgba(42, 7, 249, 0.3) !important;
+        }
+
+        /* Logout button specific styling */
+        .status-filters :global(button:last-child) {
+          background: white !important;
+          border-color: #ef4444 !important;
+          color: #ef4444 !important;
+        }
+
+        .status-filters :global(button:last-child):hover {
+          background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+          border-color: #ef4444 !important;
+          color: white !important;
+          box-shadow: 0 12px 24px rgba(239, 68, 68, 0.25) !important;
+        }
+
+        .status-filters :global(button:last-child)::before {
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent) !important;
+        }
+
+        /* Icon styling */
+        .status-filters :global(a) i,
+        .status-filters :global(button) i,
+        .filter-btn i {
+          font-size: 1rem !important;
+          transition: transform 0.3s ease !important;
+        }
+
+        .status-filters :global(a):hover i,
+        .status-filters :global(button):hover i,
+        .filter-btn:hover i {
+          transform: scale(1.1) !important;
+        }
+
+        .status-filters :global(a.active) i,
+        .status-filters :global(button.active) i,
+        .filter-btn.active i {
+          transform: scale(1.05) !important;
+        }
+
+        .dashboard-header {
+          background: white;
+          border-bottom: 1px solid #e5e7eb;
+          padding: 24px 0;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        }
+
+        .nav-links-wrapper {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .nav-links-wrapper::-webkit-scrollbar {
+          display: none;
+        }
+
+        .nav-links-container {
+          display: flex;
+          gap: 20px;
+          min-width: max-content;
+          padding: 0 20px;
+        }
+
+        .nav-link {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 20px 24px;
+          background: white;
+          border: 2px solid #e5e7eb;
+          border-radius: 16px;
+          color: #6b7280;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          text-decoration: none;
+          position: relative;
+          overflow: hidden;
+          min-width: 200px;
+          white-space: nowrap;
+        }
+
+        .nav-link::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(90deg, var(--theme-color, #2A07F9), #4c1d95);
+          transform: scaleX(0);
+          transition: transform 0.3s ease;
+        }
+
+        .nav-link:hover {
+          border-color: var(--theme-color, #2A07F9);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(42, 7, 249, 0.15);
+        }
+
+        .nav-link:hover::before {
+          transform: scaleX(1);
+        }
+
+        .nav-link.active {
+          background: linear-gradient(135deg, var(--theme-color, #2A07F9), #4c1d95);
+          border-color: var(--theme-color, #2A07F9);
+          color: white;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(42, 7, 249, 0.25);
+        }
+
+        .nav-link.active::before {
+          transform: scaleX(1);
+          background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 12px;
+          background: rgba(107, 114, 128, 0.1);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 20px;
+          transition: all 0.3s ease;
+          flex-shrink: 0;
+        }
+
+        .nav-link.active .nav-icon {
+          background: rgba(255, 255, 255, 0.2);
+          color: white;
+        }
+
+        .nav-link:hover .nav-icon {
+          background: rgba(42, 7, 249, 0.1);
+          color: var(--theme-color, #2A07F9);
+        }
+
+        .nav-link.active:hover .nav-icon {
+          background: rgba(255, 255, 255, 0.3);
+          color: white;
+        }
+
+        .nav-content {
+          flex: 1;
+          text-align: left;
+        }
+
+        .nav-title {
+          display: block;
+          font-size: 1.1rem;
+          font-weight: 600;
+          margin-bottom: 4px;
+          transition: color 0.3s ease;
+        }
+
+        .nav-subtitle {
+          display: block;
+          font-size: 0.875rem;
+          opacity: 0.7;
+          transition: opacity 0.3s ease;
+        }
+
+        .nav-link.active .nav-subtitle {
+          opacity: 0.9;
+        }
+
+        .logout-btn {
+          background: white !important;
+          border: 2px solid #ef4444 !important;
+          color: #ef4444 !important;
+        }
+
+        .logout-btn:hover {
+          background: #ef4444 !important;
+          color: white !important;
+          border-color: #ef4444 !important;
+          box-shadow: 0 8px 25px rgba(239, 68, 68, 0.25) !important;
+        }
+
+        .logout-btn .nav-icon {
+          background: rgba(239, 68, 68, 0.1) !important;
+          color: #ef4444 !important;
+        }
+
+        .logout-btn:hover .nav-icon {
+          background: rgba(255, 255, 255, 0.2) !important;
+          color: white !important;
+        }
+
+        .services-content {
           padding: 40px 0;
         }
 
@@ -474,10 +655,11 @@ export default function OrdersPage() {
           padding: 32px;
           border-radius: 16px;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          border: 1px solid #e5e7eb;
         }
 
         .page-title {
-          font-size: 1.75rem;
+          font-size: 1.875rem;
           font-weight: 700;
           color: #1f2937;
           margin: 0 0 8px 0;
@@ -486,6 +668,7 @@ export default function OrdersPage() {
         .page-subtitle {
           color: #6b7280;
           margin: 0;
+          font-size: 1rem;
         }
 
         .header-stats {
@@ -499,92 +682,175 @@ export default function OrdersPage() {
 
         .stat-number {
           display: block;
-          font-size: 1.5rem;
+          font-size: 2rem;
           font-weight: 700;
           color: var(--theme-color, #2A07F9);
+          margin-bottom: 4px;
         }
 
         .stat-label {
-          display: block;
           font-size: 0.875rem;
           color: #6b7280;
-          margin-top: 4px;
+          font-weight: 500;
         }
 
-        .error-state {
-          margin-bottom: 32px;
-        }
-
-        .filters-controls {
+        .filters-section {
           background: white;
-          padding: 24px;
+          padding: 24px 32px;
           border-radius: 16px;
+          margin-bottom: 24px;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-          margin-bottom: 32px;
+          border: 1px solid #e5e7eb;
         }
 
         .search-box {
-          position: relative;
+          margin-bottom: 24px;
         }
 
-        .search-box input {
-          padding-right: 40px;
+        .search-input-wrapper {
+          position: relative;
+          max-width: 400px;
         }
 
         .search-icon {
           position: absolute;
-          right: 12px;
+          left: 16px;
           top: 50%;
           transform: translateY(-50%);
-          color: #6b7280;
+          color: #9ca3af;
+          font-size: 16px;
         }
 
-        .orders-section {
+        .search-input {
+          width: 100%;
+          padding: 12px 16px 12px 48px;
+          border: 2px solid #e5e7eb;
+          border-radius: 12px;
+          font-size: 1rem;
+          transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+          outline: none;
+          border-color: var(--theme-color, #2A07F9);
+          box-shadow: 0 0 0 3px rgba(42, 7, 249, 0.1);
+        }
+
+        .status-filters {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .filter-btn {
+          padding: 8px 16px;
+          border: 2px solid #e5e7eb;
+          background: white;
+          color: #6b7280;
+          border-radius: 20px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .filter-btn:hover {
+          border-color: var(--theme-color, #2A07F9);
+          color: var(--theme-color, #2A07F9);
+        }
+
+        .filter-btn.active {
+          background: var(--theme-color, #2A07F9);
+          border-color: var(--theme-color, #2A07F9);
+          color: white;
+        }
+
+        .services-section {
           background: white;
           border-radius: 16px;
+          padding: 32px;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-          overflow: hidden;
+          border: 1px solid #e5e7eb;
         }
 
-        .orders-list {
+        .services-list {
           display: flex;
           flex-direction: column;
+          gap: 0;
         }
 
-        .order-card {
-          padding: 24px;
-          border-bottom: 1px solid #e5e7eb;
-        }
-
-        .order-card:last-child {
-          border-bottom: none;
-        }
-
-        .order-header {
+        .service-card {
           display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 16px;
+          align-items: center;
+          gap: 20px;
+          padding: 24px 24px;
+          border: 2px solid #e5e7eb;
+          transition: all 0.2s ease;
         }
 
-        .order-number {
-          font-size: 1.125rem;
+        .service-card:last-child {
+        }
+
+        .service-card:hover {
+        }
+
+        .service-icon {
+          width: 48px;
+          height: 48px;
+          background: #f3f4f6;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #6b7280;
+          font-size: 18px;
+          flex-shrink: 0;
+        }
+
+        .service-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .service-title {
+          font-size: 16px;
           font-weight: 600;
           color: #1f2937;
-          margin: 0 0 8px 0;
+          margin: 0 0 6px 0;
         }
 
-        .order-meta {
+        .service-meta {
           display: flex;
-          flex-direction: column;
-          gap: 4px;
-          font-size: 0.875rem;
+          align-items: center;
+          gap: 8px;
+          font-size: 13px;
           color: #6b7280;
+        }
+
+        .service-separator {
+          color: #d1d5db;
         }
 
         .service-schedule {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 12px;
           color: #059669;
+          margin-top: 4px;
           font-weight: 500;
+        }
+
+        .service-schedule i {
+          font-size: 11px;
+        }
+
+        .schedule-date, .schedule-time {
+          color: #059669;
+        }
+
+        .service-status {
+          flex-shrink: 0;
         }
 
         .status-badge {
@@ -596,78 +862,37 @@ export default function OrdersPage() {
           text-transform: capitalize;
         }
 
-        .order-items {
-          margin-bottom: 16px;
+        .service-price {
+          font-size: 16px;
+          font-weight: 700;
+          color: #1f2937;
+          flex-shrink: 0;
+          min-width: 100px;
+          text-align: right;
         }
 
-        .order-item {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          padding: 12px 0;
-          border-bottom: 1px solid #f3f4f6;
+        .service-action {
+          flex-shrink: 0;
         }
 
-        .order-item:last-child {
-          border-bottom: none;
-        }
-
-        .item-icon {
-          width: 40px;
-          height: 40px;
-          background: #f3f4f6;
+        .view-details-btn {
+          color: var(--theme-color, #2A07F9);
+          text-decoration: none;
+          font-weight: 500;
+          font-size: 14px;
+          padding: 8px 16px;
           border-radius: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #6b7280;
+          transition: all 0.2s ease;
         }
 
-        .item-details {
-          flex: 1;
-        }
-
-        .item-name {
-          font-size: 1rem;
-          font-weight: 600;
-          color: #1f2937;
-          margin: 0 0 4px 0;
-        }
-
-        .item-variant {
-          font-size: 0.875rem;
-          color: #6b7280;
-          margin: 0 0 4px 0;
-        }
-
-        .item-quantity {
-          font-size: 0.875rem;
-          color: #6b7280;
-          margin: 0;
-        }
-
-        .item-price {
-          font-size: 1rem;
-          font-weight: 600;
-          color: #1f2937;
-        }
-
-        .order-footer {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding-top: 16px;
-          border-top: 1px solid #f3f4f6;
-        }
-
-        .order-total {
-          font-size: 1.125rem;
-          color: #1f2937;
+        .view-details-btn:hover {
+          background: rgba(42, 7, 249, 0.1);
+          color: #1e06d4;
         }
 
         .empty-state {
           text-align: center;
-          padding: 64px 24px;
+          padding: 80px 24px;
         }
 
         .empty-icon {
@@ -687,45 +912,158 @@ export default function OrdersPage() {
           color: #6b7280;
           margin: 0 0 20px 0;
           font-size: 1rem;
+          max-width: 500px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .btn {
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-weight: 500;
+          text-decoration: none;
+          transition: all 0.2s ease;
+          border: none;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .btn-primary {
+          background: var(--theme-color, #2A07F9);
+          color: white;
+        }
+
+        .btn-primary:hover {
+          background: #1e06d4;
+          transform: translateY(-1px);
         }
 
         /* Responsive Design */
+        @media (max-width: 1024px) {
+          .nav-link {
+            min-width: 180px;
+            padding: 16px 20px;
+          }
+
+          .nav-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+          }
+
+          .nav-title {
+            font-size: 1rem;
+          }
+        }
+
         @media (max-width: 768px) {
+          .services-content {
+            padding: 24px 0;
+          }
+
           .page-header {
             flex-direction: column;
             gap: 24px;
+            padding: 24px;
           }
 
           .header-stats {
-            gap: 16px;
+            gap: 24px;
           }
 
-          .order-header {
-            flex-direction: column;
+          .nav-links-container {
             gap: 12px;
+            padding: 0 16px;
           }
 
-          .order-footer {
-            flex-direction: column;
+          .nav-link {
+            min-width: 160px;
+            padding: 16px 20px;
+          }
+
+          .nav-content {
+            text-align: left;
+          }
+
+          .nav-subtitle {
+            display: none;
+          }
+
+          .status-filters {
+            gap: 8px;
+          }
+
+          .filter-btn {
+            font-size: 0.8rem;
+            padding: 6px 12px;
+          }
+
+          .service-card {
+            flex-wrap: wrap;
             gap: 12px;
-            align-items: stretch;
+            padding: 20px 0;
           }
 
-          .order-actions {
-            text-align: center;
+          .service-info {
+            order: 1;
+            flex: 1 1 100%;
           }
 
-          .filters-controls .row {
-            gap: 16px;
+          .service-status {
+            order: 2;
           }
 
-          .filters-controls .col-md-6 {
-            width: 100%;
+          .service-price {
+            order: 3;
+            min-width: auto;
+            text-align: left;
+          }
+
+          .service-action {
+            order: 4;
+            margin-left: auto;
+          }
+
+          .services-section {
+            padding: 24px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .service-card {
+            padding: 16px 0;
+          }
+
+          .page-header {
+            padding: 20px;
+          }
+
+          .page-title {
+            font-size: 1.5rem;
+          }
+
+          .stat-number {
+            font-size: 1.5rem;
+          }
+
+          .nav-link {
+            min-width: 140px;
+            padding: 14px 16px;
+          }
+
+          .nav-icon {
+            width: 36px;
+            height: 36px;
+            font-size: 16px;
+          }
+
+          .nav-title {
+            font-size: 0.95rem;
           }
         }
       `}</style>
-      
-      <Footer />
     </>
   );
 } 

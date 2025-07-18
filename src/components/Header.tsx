@@ -186,7 +186,7 @@ export default function Header() {
                                   <i className="fas fa-user"></i>
                                   <span>Profile</span>
                                 </Link>
-                                <Link href="/dashboard/services" className="user-dropdown-item" onClick={() => setIsUserDropdownOpen(false)}>
+                                <Link href="/dashboard/orders" className="user-dropdown-item" onClick={() => setIsUserDropdownOpen(false)}>
                                   <i className="fas fa-shopping-cart"></i>
                                   <span>Orders</span>
                                 </Link>
@@ -259,7 +259,7 @@ export default function Header() {
                               <i className="fas fa-user pe-1"></i>
                               <span>Profile</span>
                             </Link>
-                            <Link href="/dashboard/services" className="user-dropdown-item  ">
+                            <Link href="/dashboard/orders" className="user-dropdown-item  ">
                               <i className="fas fa-shopping-cart pe-1"></i>
                               <span>Orders</span>
                             </Link>

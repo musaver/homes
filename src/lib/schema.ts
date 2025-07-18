@@ -279,7 +279,7 @@ export const orders = mysqlTable("orders", {
   paymentStatus: varchar("payment_status", { length: 50 }).default("pending"), // pending, paid, failed, refunded
   fulfillmentStatus: varchar("fulfillment_status", { length: 50 }).default("pending"), // pending, fulfilled, partially_fulfilled
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
-  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default('0.00'),
+  taxAmount: varchar("tax_amount", { length: 255 }).default('0.00,0.00'), // Format: "vatAmount,serviceAmount"
   shippingAmount: decimal("shipping_amount", { precision: 10, scale: 2 }).default('0.00'),
   discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default('0.00'),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),

@@ -64,6 +64,10 @@ export async function POST(req: Request) {
 
     // Create order with proper type handling
     const orderId = uuidv4();
+    
+    // Format tax amounts as comma-separated string: "vatAmount,serviceAmount"
+    const taxAmountString = `${vatAmount || 0},${serviceAmount || 0}`;
+    
     await db.insert(orders).values({
       id: orderId,
       orderNumber,
@@ -73,8 +77,7 @@ export async function POST(req: Request) {
       status: 'pending',
       paymentStatus: 'pending',
       subtotal: subtotal || 0,
-      vatAmount: vatAmount || 0,
-      serviceAmount: serviceAmount || 0,
+      taxAmount: taxAmountString,
       totalAmount: total || 0,
       shippingAddress1: address || '',
       shippingAddress2: null,
