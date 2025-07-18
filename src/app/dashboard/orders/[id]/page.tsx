@@ -26,6 +26,10 @@ interface Order {
   status: string;
   paymentStatus: string;
   totalAmount: string;
+  subtotal: string;
+  taxAmount: string;
+  shippingAmount: string;
+  discountAmount: string;
   createdAt: string;
   updatedAt: string;
   email: string;
@@ -40,9 +44,6 @@ interface Order {
   serviceDate?: string;
   serviceTime?: string;
   items: OrderItem[];
-  subtotal?: string;
-  vatAmount?: string;
-  serviceAmount?: string;
 }
 
 export default function OrderDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -67,39 +68,65 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
 
   const fetchOrder = async () => {
     try {
-      const response = await fetch(`/api/orders/${resolvedParams.id}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch order');
+      setLoading(true);
+      setError('');
+      
+      console.log('🔍 Order Details: Fetching order:', resolvedParams.id);
+      
+      const response = await fetch(`/api/orders/${resolvedParams.id}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('🔍 Order Details: Response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔍 Order Details: Order data received:', data);
+        setOrder(data.order);
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Order Details: Failed to fetch order:', errorData);
+        setError(errorData.error || 'Failed to fetch order details');
       }
-
-      setOrder(data.order);
     } catch (error: any) {
-      setError(error.message);
+      console.error('❌ Order Details: Error:', error);
+      setError(error.message || 'An error occurred while fetching order details');
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { class: 'badge-warning', text: 'Pending' },
-      confirmed: { class: 'badge-info', text: 'Confirmed' },
-      processing: { class: 'badge-primary', text: 'Processing' },
-      shipped: { class: 'badge-secondary', text: 'Shipped' },
-      delivered: { class: 'badge-success', text: 'Delivered' },
-      cancelled: { class: 'badge-danger', text: 'Cancelled' }
+  const getStatusColor = (status: string) => {
+    const colors = {
+      pending: '#F59E0B',
+      confirmed: '#8B5CF6',
+      processing: '#3B82F6',
+      shipped: '#06B6D4',
+      delivered: '#10B981',
+      cancelled: '#EF4444'
     };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-    return <span className={`badge ${config.class}`}>{config.text}</span>;
+    return colors[status as keyof typeof colors] || '#6B7280';
+  };
+
+  const getPaymentStatusColor = (status: string) => {
+    const colors = {
+      pending: '#F59E0B',
+      paid: '#10B981',
+      failed: '#EF4444',
+      refunded: '#6B7280'
+    };
+    return colors[status as keyof typeof colors] || '#6B7280';
   };
 
   const formatPrice = (price: string) => {
-  const num = parseFloat(price);
-  return `${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-};
+    const num = parseFloat(price);
+    return `${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
   const formatDate = (date: string) => new Date(date).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -108,24 +135,32 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
     minute: '2-digit'
   });
 
-  const formatServiceDateTime = (date?: string, time?: string) => {
-    if (!date || !time) return 'Not scheduled';
-    
-    const serviceDate = new Date(date);
-    const formattedDate = serviceDate.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+  const formatServiceDate = (date?: string) => {
+    if (!date) return null;
+    return new Date(date).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     });
-    
-    // Convert 24-hour time to 12-hour format
+  };
+
+  const formatServiceTime = (time?: string) => {
+    if (!time) return null;
     const [hours, minutes] = time.split(':');
     const hour12 = parseInt(hours) > 12 ? parseInt(hours) - 12 : parseInt(hours);
     const ampm = parseInt(hours) >= 12 ? 'PM' : 'AM';
-    const formattedTime = `${hour12 === 0 ? 12 : hour12}:${minutes} ${ampm}`;
-    
-    return { date: formattedDate, time: formattedTime };
+    return `${hour12 === 0 ? 12 : hour12}:${minutes} ${ampm}`;
+  };
+
+  const getServiceIcon = (productName: string) => {
+    const name = productName.toLowerCase();
+    if (name.includes('plumb')) return 'fas fa-wrench';
+    if (name.includes('electric')) return 'fas fa-bolt';
+    if (name.includes('clean')) return 'fas fa-broom';
+    if (name.includes('hvac') || name.includes('heating')) return 'fas fa-fan';
+    if (name.includes('paint')) return 'fas fa-paint-roller';
+    return 'fas fa-tools';
   };
 
   if (status === 'loading' || loading) {
@@ -137,7 +172,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
             <div className="row justify-content-center">
               <div className="col-lg-8">
                 <div className="text-center">
-                                <LoadingSpinner size="medium" color="#0d6efd" />
+                  <LoadingSpinner size="medium" color="#0d6efd" />
                   <h3 className="mt-3">Loading Order Details...</h3>
                 </div>
               </div>
@@ -157,19 +192,17 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
     return (
       <>
         <Header />
-        
         <section className="space-top space-extra-bottom">
           <div className="container">
             <div className="row justify-content-center">
               <div className="col-lg-8">
                 <div className="text-center">
-                  <div className="error-icon mb-3">
-                    <i className="fas fa-exclamation-triangle" style={{fontSize: '4rem', color: '#ef4444'}}></i>
+                  <div className="alert alert-danger">
+                    <i className="fas fa-exclamation-triangle me-2"></i>
+                    {error}
                   </div>
-                  <h2 className="mb-3">Order Not Found</h2>
-                  <p className="text-muted mb-4">{error}</p>
-                  <Link href="/dashboard/services" className="btn btn-primary">
-                    Back
+                  <Link href="/dashboard/orders" className="btn btn-primary">
+                    Back to Orders
                   </Link>
                 </div>
               </div>
@@ -190,13 +223,9 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
             <div className="row justify-content-center">
               <div className="col-lg-8">
                 <div className="text-center">
-                  <div className="error-icon mb-3">
-                    <i className="fas fa-question-circle" style={{fontSize: '4rem', color: '#6b7280'}}></i>
-                  </div>
-                  <h2 className="mb-3">Order Not Found</h2>
-                  <p className="text-muted mb-4">The requested order could not be found.</p>
-                  <Link href="/dashboard/services" className="btn btn-primary">
-                    Back
+                  <h3>Order not found</h3>
+                  <Link href="/dashboard/orders" className="btn btn-primary">
+                    Back to Orders
                   </Link>
                 </div>
               </div>
@@ -212,889 +241,520 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
     <>
       <Header />
     
-      {/* Order Details Section */}
-      <div className="service-details-container">
-        <div className="service-header">
+      <div className="order-details-container">
+        {/* Navigation */}
+        <div className="filters-section">
           <div className="container">
-            <div className="header-content">
-              <Link href="/dashboard/services" className="btn btn-outline-secondary max-width-100" style={{width: '200px'}}>
-                <i className="fas fa-arrow-left"></i>
-                <span className="ms-2">Back </span>
-              </Link>
-              
-              <div className="service-info">
-                <div className="service-icon">
-                  <i className="fas fa-wrench"></i>
-                </div>
-                <div className="service-title-section">
-                  <h1 className="service-title">Order Details</h1>
-                  <p className="service-id">#{order.orderNumber}</p>
-                  <p className="service-id">
-                    <i className="fas fa-calendar-alt me-2"></i>
-                    Placed on {formatDate(order.createdAt)}
-                  </p>
-                </div>
-                <div className="service-status">
-                  <span 
-                    className="status-badge"
-                    style={{ backgroundColor: 'red' }}
-                  >
-                    {order.status}
-                  </span>
-                </div>
-              </div>
+            <div className="status-filters">
+              <Link className="filter-btn" href="/dashboard"><i className="fas fa-th-large"></i> Dashboard</Link>
+              <Link className="filter-btn" href="/dashboard/profile"><i className="fas fa-user"></i> Profile</Link>
+              <Link className="filter-btn active" href="/dashboard/orders"><i className="fas fa-shopping-cart"></i> Orders</Link>
+              <button className="filter-btn" onClick={() => signOut({ callbackUrl: '/login-register' })}><i className="fas fa-sign-out-alt"></i> Logout</button>
             </div>
           </div>
         </div>
 
-
-        {/* Main Content */}
-        <div className="service-content">
+        {/* Order Details Content */}
+        <div className="order-details-content">
           <div className="container">
-            <div className="content-grid">
-              
-              {/* Left Column */}
-              <div className="left-column">
-                
+            
+            {/* Back Button */}
+            <div className="back-section">
+              <Link href="/dashboard/orders" className="btn btn-outline-secondary">
+                <i className="fas fa-arrow-left me-2"></i>
+                Back to Orders
+              </Link>
+            </div>
 
-              {order.items.map((item) => (
-                          <div key={item.id} className="section">
-                            <div className="">
-                            <h2 className="section-title">{item.productName}</h2>
-                            <p className="section-subtitle mb-1">Check variations and add-ons</p>
-                              
+            {/* Order Header */}
+            <div className="order-header-card">
+              <div className="order-header-content">
+                <div className="order-info">
+                  <h1 className="order-title">Order #{order.orderNumber}</h1>
+                  <div className="order-meta">
+                    <span className="order-date">
+                      <i className="fas fa-calendar-alt me-2"></i>
+                      Placed on {formatDate(order.createdAt)}
+                    </span>
+                    {order.serviceDate && order.serviceTime && (
+                      <span className="service-schedule">
+                        <i className="fas fa-clock me-2"></i>
+                        Scheduled for {formatServiceDate(order.serviceDate)} at {formatServiceTime(order.serviceTime)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="order-status-badges">
+                  <div className="status-badge-wrapper">
+                    <span className="status-label">Order Status: &nbsp; </span>
+                    <span 
+                      className="status-badge"
+                      style={{ backgroundColor: getStatusColor(order.status) }}
+                    >
+                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                    </span>
+                  </div>
+                  <br />
+                  <div className="status-badge-wrapper">
+                    <span className="status-label">Payment Status: &nbsp; </span>
+                    <span 
+                      className="status-badge"
+                      style={{ backgroundColor: getPaymentStatusColor(order.paymentStatus) }}
+                    >
+                      {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-                          
-
-                            <div className="variations-list">
-                              {item.variantTitle && (
-                                
-                                <div className="variation-card">
-                                  <div className="variation-info">
-                                    <p className="variation-name">{item.variantTitle}</p>
-                                  </div>
-                                  <div className="variation-price">
-                                    <CurrencySymbol /> {formatPrice(item.price)}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                              
-                              
-                              {(() => {
-                                try {
-                                  let processedAddons = null;
-                                  
-                                  if (Array.isArray(item.addons)) {
-                                    processedAddons = item.addons;
-                                  } else if (typeof item.addons === 'string') {
-                                    // Handle double-encoded JSON strings
-                                    let parsed = JSON.parse(item.addons);
-                                    if (typeof parsed === 'string') {
-                                      // It's double-encoded, parse again
-                                      processedAddons = JSON.parse(parsed);
-                                    } else {
-                                      processedAddons = parsed;
-                                    }
-                                  } else if (item.addons && typeof item.addons === 'object') {
-                                    processedAddons = item.addons;
-                                  }
-                                  
-                                  if (processedAddons && Array.isArray(processedAddons) && processedAddons.length > 0) {
-                                    // Group addons by groupTitle
-                                    const groupedAddons = processedAddons.reduce((groups: Record<string, any[]>, addon: any) => {
-                                      const groupKey = addon.groupTitle || 'Ungrouped';
-                                      if (!groups[groupKey]) groups[groupKey] = [];
-                                      groups[groupKey].push(addon);
-                                      return groups;
-                                    }, {});
-
-                                    return (
-                                      <div className="item-addons">
-                                        {Object.entries(groupedAddons).map(([groupTitle, groupAddons]) => (
-                                          <div key={groupTitle} className="addon-group mb-2">
-                                            <div className="addon-group-title mb-2 mt-4">{groupTitle}:</div>
-                                            <div className="addon-group-list variation-list">
-                                              {(groupAddons as any[]).map((addon: any, index: number) => (
-                                                <div key={index} className="addons-item variation-card mb-2">
-                                                  <div className="variation-info">
-                                                    <span className="addon-name">{addon.title || addon.name || addon.addonTitle}</span>
-                                                    {addon.quantity && addon.quantity > 1 && (
-                                                      <span className="addon-quantity"> × {addon.quantity}</span>
-                                                    )}
-                                                  </div>
-                                                  <div className="variation-price">
-                                                    {addon.price && (
-                                                      <span className="addon-price"><CurrencySymbol /> {formatPrice(addon.price.toString())}</span>
-                                                    )}
-                                                  </div>
-                                                </div>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    );
-                                  }
-                                } catch (error: any) {
-                                  return <div><strong>Error processing addons:</strong> {error.message}</div>;
-                                }
-                                return null;
-                              })()}
-                            </div>
+            <div className="order-content-grid">
+              {/* Left Column - Order Items */}
+              <div className="order-items-section">
+                <div className="section-card">
+                  <h2 className="section-title">Order Items</h2>
+                  <div className="items-list">
+                    {order.items.map((item) => (
+                      <div key={item.id} className="item-card">
+                        <div className="item-icon">
+                          <i className={getServiceIcon(item.productName)}></i>
+                        </div>
+                        <div className="item-details">
+                          <h3 className="item-name">{item.productName}</h3>
+                          {item.variantTitle && (
+                            <p className="item-variant">{item.variantTitle}</p>
+                          )}
+                          <div className="item-meta">
+                            <span className="item-quantity">Qty: {item.quantity}</span>
+                            <span className="item-unit-price">
+                              <CurrencySymbol /> {formatPrice(item.price)} each
+                            </span>
                           </div>
-                        ))}
+                          {item.addons && Array.isArray(item.addons) && item.addons.length > 0 && (
+                            <div className="item-addons">
+                              <h4>Add-ons:</h4>
+                              {item.addons.map((addon: any, index: number) => (
+                                <div key={index} className="addon-item">
+                                  <span>{addon.title || addon.name || `Addon ${index + 1}`}</span>
+                                  <span>Qty: {addon.quantity || 1}</span>
+                                  <span><CurrencySymbol /> {formatPrice(addon.price || '0')}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="item-total">
+                          <CurrencySymbol /> {formatPrice(item.totalPrice)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
+              {/* Right Column - Order Summary & Details */}
+              <div className="order-summary-section">
+                {/* Order Summary */}
+                <div className="section-card">
+                  <h2 className="section-title">Order Summary</h2>
+                  <div className="summary-details">
+                    <div className="summary-row">
+                      <span>Subtotal</span>
+                      <span><CurrencySymbol /> {formatPrice(order.subtotal || '0')}</span>
+                    </div>
+                    {order.taxAmount && parseFloat(order.taxAmount) > 0 && (
+                      <div className="summary-row">
+                        <span>Tax</span>
+                        <span><CurrencySymbol /> {formatPrice(order.taxAmount)}</span>
+                      </div>
+                    )}
+                    {order.shippingAmount && parseFloat(order.shippingAmount) > 0 && (
+                      <div className="summary-row">
+                        <span>Shipping</span>
+                        <span><CurrencySymbol /> {formatPrice(order.shippingAmount)}</span>
+                      </div>
+                    )}
+                    {order.discountAmount && parseFloat(order.discountAmount) > 0 && (
+                      <div className="summary-row">
+                        <span>Discount</span>
+                        <span><CurrencySymbol /> {formatPrice(order.discountAmount)}</span>
+                      </div>
+                    )}
+                    <div className="summary-row total-row">
+                      <span>Total</span>
+                      <span><CurrencySymbol /> {formatPrice(order.totalAmount)}</span>
+                    </div>
+                  </div>
+                </div>
 
+                {/* Contact Information */}
+                <div className="section-card">
+                  <h2 className="section-title">Contact Information</h2>
+                  <div className="contact-details">
+                    <div className="contact-item">
+                      <i className="fas fa-envelope"></i>
+                      <span>{order.email}</span>
+                    </div>
+                    {order.phone && (
+                      <div className="contact-item">
+                        <i className="fas fa-phone"></i>
+                        <span>{order.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-                {/* Customer Notes */}
+                {/* Service Address */}
+                <div className="section-card">
+                  <h2 className="section-title">Service Address</h2>
+                  <div className="address-details">
+                    <p>{order.shippingAddress1}</p>
+                    {order.shippingAddress2 && <p>{order.shippingAddress2}</p>}
+                    <p>
+                      {order.shippingCity}, {order.shippingState} {order.shippingPostalCode}
+                    </p>
+                    <p>{order.shippingCountry}</p>
+                  </div>
+                </div>
+
+                {/* Special Instructions */}
                 {order.notes && (
-                  <div className="section">
-                    <h2 className="section-title">Service Notes</h2>
+                  <div className="section-card">
+                    <h2 className="section-title">Special Instructions</h2>
                     <div className="notes-content">
                       <p>{order.notes}</p>
                     </div>
                   </div>
                 )}
-
-                {/* Service Details */}
-                <div className="details-card">
-                  <h3 className="card-title">Service Details</h3>
-                  
-                  {order.serviceDate && order.serviceTime ? (
-                    <>
-                      <div className="detail-item">
-                        <div className="detail-icon">
-                          <i className="fas fa-calendar"></i>
-                        </div>
-                        <div className="detail-info">
-                          <div className="detail-label">Service Date</div>
-                          <div className="detail-value">
-                            {(() => {
-                              const formatted = formatServiceDateTime(order.serviceDate, order.serviceTime);
-                              return typeof formatted === 'object' ? formatted.date : formatted;
-                            })()}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="detail-item">
-                        <div className="detail-icon">
-                          <i className="fas fa-clock"></i>
-                        </div>
-                        <div className="detail-info">
-                          <div className="detail-label">Service Time</div>
-                          <div className="detail-value">
-                            {(() => {
-                              const formatted = formatServiceDateTime(order.serviceDate, order.serviceTime);
-                              return typeof formatted === 'object' ? formatted.time : formatted;
-                            })()}
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="detail-item">
-                      <div className="detail-icon">
-                        <i className="fas fa-calendar-times"></i>
-                      </div>
-                      <div className="detail-info">
-                        <div className="detail-label">Service Schedule</div>
-                        <div className="detail-value">Not scheduled yet</div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="detail-item">
-                    <div className="detail-icon">
-                      <i className="fas fa-map-marker-alt"></i>
-                    </div>
-                    <div className="detail-info">
-                      <div className="detail-label">Service Location</div>
-                      <div className="detail-value">{order.shippingAddress1}</div>
-                    </div>
-                  </div>
-                  
-                  <div className="detail-item">
-                    <div className="detail-icon">
-                      <i className="fas fa-info-circle"></i>
-                    </div>
-                    <div className="detail-info">
-                      <div className="detail-label">Order Placed</div>
-                      <div className="detail-value">{formatDate(order.createdAt)}</div>
-                    </div>
-                  </div>
-                </div>
-
-                
-
               </div>
-
-                {/* Right Column */}
-              <div className="right-column">
-                
-                {/* Price Summary */}
-                <div className="summary-card">
-                  <h3 className="summary-title">Price Summary</h3>
-                  
-                  {/* Items Breakdown */}
-                  {order.items.map((item, index) => (
-                    <div key={index} className="summary-item">
-                      <span>{item.productName}</span>
-                      <span><CurrencySymbol /> {formatPrice(item.price)}</span>
-                    </div>
-                  ))}
-                  
-                  <div className="summary-divider"></div>
-                  
-                  {/* Base Total */}
-                  <div className="summary-item">
-                    <span>Subtotal</span>
-                    <span><CurrencySymbol /> {formatPrice(order.subtotal || order.totalAmount)}</span>
-                  </div>
-
-                  {/* VAT Tax */}
-                  {order.vatAmount && parseFloat(order.vatAmount) > 0 && (
-                    <div className="summary-item tax-item">
-                      <span>VAT Tax</span>
-                      <span><CurrencySymbol /> {formatPrice(order.vatAmount)}</span>
-                    </div>
-                  )}
-
-                  {/* Service Tax */}
-                  {order.serviceAmount && parseFloat(order.serviceAmount) > 0 && (
-                    <div className="summary-item tax-item">
-                      <span>Service Tax</span>
-                      <span><CurrencySymbol /> {formatPrice(order.serviceAmount)}</span>
-                    </div>
-                  )}
-                  
-                  <div className="summary-divider"></div>
-                  
-                  {/* Final Total */}
-                  <div className="summary-item total">
-                    <span>Total</span>
-                    <span><CurrencySymbol /> {formatPrice(order.totalAmount)}</span>
-                  </div>
-                </div>
-
-                {/* Assigned Technician */}
-                <div className="technician-card">
-                  <h3 className="card-title">Assigned Technician</h3>
-                  
-                  <div className="technician-info">
-                    <div className="technician-avatar">
-                      <i className="fas fa-user"></i>
-                    </div>
-                    <div className="technician-details">
-                      <h4 className="technician-name">{order.email}</h4>
-                      <p className="technician-title">{order.email}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="contact-info">
-                    <div className="contact-item">
-                      <i className="fas fa-phone"></i>
-                      <span>{order.phone}</span>
-                    </div>
-                    <div className="contact-item">
-                      <i className="fas fa-envelope"></i>
-                      <span>{order.email}</span>
-                    </div>
-                  </div>
-                  
-                  
-                </div>
-
-                
-
-              </div>
-
-
             </div>
+
           </div>
         </div>
-
-        
       </div>
+      
       <Footer />
-
+      
       <style jsx>{`
-       .loading-container, .error-container {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          min-height: 60vh;
-          padding: 2rem;
-        }
-
-        .spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid #e5e7eb;
-          border-top: 3px solid #3b82f6;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          margin-bottom: 1rem;
-        }
-
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-
-        .btn-primary {
-          background: #3b82f6;
-          color: white;
-          padding: 12px 24px;
-          border-radius: 8px;
-          text-decoration: none;
-          display: inline-block;
-          margin-top: 1rem;
-        }
-
-        .service-details-container {
+        .order-details-container {
+          min-height: 100vh;
           background: #f8fafc;
-          min-height: calc(100vh - 140px);
         }
 
-        .service-header {
-          background: white;
-          border-bottom: 1px solid #e5e7eb;
-          padding: 24px 0;
+        .filters-section {
+          background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+          padding: 32px 24px;
+          border-radius: 20px;
+          margin-bottom: 32px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+          border: 1px solid #e2e8f0;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
         }
 
-        .container {
-          max-width: 1200px;
+        .status-filters {
+          display: flex;
+          gap: 16px;
+          justify-content: center;
+          width: max-content;
           margin: 0 auto;
-          padding: 0 24px;
         }
 
-        .header-content {
+        .filter-btn {
+          border-radius: 100px;
+          display: flex !important;
+          align-items: center !important;
+          gap: 12px !important;
+          padding: 16px 24px !important;
+          background: white !important;
+          border: 2px solid #e5e7eb !important;
+          color: #6b7280 !important;
+          font-size: 0.95rem !important;
+          font-weight: 600 !important;
+          cursor: pointer !important;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          text-decoration: none !important;
+          position: relative !important;
+          overflow: hidden !important;
+          min-width: 140px !important;
+          justify-content: center !important;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+        }
+
+        .filter-btn:hover {
+          border-color: var(--theme-color, #2A07F9) !important;
+          color: var(--theme-color, #2A07F9) !important;
+          transform: translateY(-3px) !important;
+          box-shadow: 0 12px 24px rgba(42, 7, 249, 0.15) !important;
+        }
+
+        .order-details-content {
+          padding: 40px 0;
+        }
+
+        .back-section {
+          margin-bottom: 24px;
+        }
+
+        .order-header-card {
+          background: white;
+          border-radius: 16px;
+          padding: 32px;
+          margin-bottom: 32px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .order-header-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+        }
+
+        .order-title {
+          font-size: 1.75rem;
+          font-weight: 700;
+          color: #1f2937;
+          margin: 0 0 12px 0;
+        }
+
+        .order-meta {
           display: flex;
           flex-direction: column;
-          gap: 24px;
-        }
-
-        .back-link {
-          display: flex;
-          align-items: center;
           gap: 8px;
+          font-size: 0.875rem;
           color: #6b7280;
-          text-decoration: none;
+        }
+
+        .service-schedule {
+          color: #059669;
           font-weight: 500;
-          transition: color 0.2s ease;
         }
 
-        .back-link:hover {
-          color: #374151;
-        }
-
-        .service-info {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-        }
-
-        .service-icon {
-          width: 48px;
-          height: 48px;
-          background: #f3f4f6;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #6b7280;
-          font-size: 20px;
-        }
-
-        .service-title-section {
-          flex: 1;
-        }
-
-        .service-title {
-          font-size: 24px;
-          font-weight: 600;
-          color: #1f2937;
-          margin: 0 0 4px 0;
-        }
-
-        .service-id {
-          font-size: 14px;
-          color: #6b7280;
-          margin: 0;
+        .order-status-badges {
+          display: block;
+          gap: 12px;
+          text-align: right;
         }
 
         .status-badge {
-          padding: 6px 12px;
+          padding: 8px 16px;
           border-radius: 20px;
           font-size: 12px;
-          font-weight: 500;
+          font-weight: 600;
           color: white;
+          text-transform: capitalize;
         }
 
-        .service-content {
-          padding: 32px 0;
-        }
-
-        .content-grid {
+        .order-content-grid {
           display: grid;
-          grid-template-columns: 1fr 400px;
+          grid-template-columns: 2fr 1fr;
           gap: 32px;
         }
 
-        .section {
+        .section-card {
           background: white;
-          border-radius: 12px;
+          border-radius: 16px;
           padding: 24px;
           margin-bottom: 24px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          border: 1px solid #e5e7eb;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
         }
 
         .section-title {
-          font-size: 20px;
-          font-weight: 600;
-          color: #1f2937;
-          margin: 0 0 8px 0;
-        }
-
-        .section-subtitle {
-          font-size: 14px;
-          color: #6b7280;
-          margin: 0 0 24px 0;
-        }
-
-        .variations-list {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .variation-card {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 20px;
-          border: 2px solid #e5e7eb;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .variation-card:hover {
-          border-color: #d1d5db;
-        }
-
-        .variation-card.selected {
-          border-color: #3b82f6;
-          background: #f0f9ff;
-        }
-
-        .variation-info {
-          flex: 1;
-        }
-
-        .variation-name {
-          font-size: 16px;
-          font-weight: 600;
-          color: #1f2937;
-          margin: 0 0 4px 0;
-        }
-
-        .variation-description {
-          font-size: 14px;
-          color: #6b7280;
-          margin: 0;
-        }
-
-        .variation-price {
-          font-size: 18px;
-          font-weight: 600;
-          color: #1f2937;
-        }
-
-        .addons-list {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .status-timeline {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .status-step {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .status-dot {
-          width: 12px;
-          height: 12px;
-          border-radius: 50%;
-          background: #e5e7eb;
-          flex-shrink: 0;
-        }
-
-        .status-step.completed .status-dot {
-          background: var(--theme-color, #2A07F9);
-        }
-
-        .status-label {
-          color: #6b7280;
-          font-size: 0.875rem;
-        }
-
-        .status-step.completed .status-label {
-          color: #1f2937;
-          font-weight: 500;
-        }
-
-        .addon-item {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          padding: 16px;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-        }
-
-        .addon-checkbox {
-          position: relative;
-        }
-
-        .addon-checkbox input[type="checkbox"] {
-          appearance: none;
-          width: 20px;
-          height: 20px;
-          border: 2px solid #d1d5db;
-          border-radius: 4px;
-          background: white;
-          cursor: pointer;
-        }
-
-        .addon-checkbox input[type="checkbox"]:checked {
-          background: #3b82f6;
-          border-color: #3b82f6;
-        }
-
-        .addon-checkbox input[type="checkbox"]:checked::after {
-          content: '✓';
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          color: white;
-          font-size: 12px;
-          font-weight: bold;
-        }
-
-        .addon-info {
-          flex: 1;
-        }
-
-        .addon-name {
-          font-size: 16px;
-          font-weight: 500;
-          color: #1f2937;
-          margin: 0 0 4px 0;
-        }
-
-        .addon-description {
-          font-size: 14px;
-          color: #6b7280;
-          margin: 0;
-        }
-
-        .addon-price {
-          font-size: 16px;
-          font-weight: 600;
-          color: #1f2937;
-        }
-
-        .notes-content {
-          padding: 16px;
-          background: #f9fafb;
-          border-radius: 8px;
-          border: 1px solid #e5e7eb;
-        }
-
-        .notes-content p {
-          margin: 0;
-          color: #374151;
-          line-height: 1.6;
-        }
-
-        .summary-card, .details-card, .technician-card {
-          background: white;
-          border-radius: 12px;
-          padding: 24px;
-          margin-bottom: 24px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          border: 1px solid #e5e7eb;
-        }
-
-        .summary-title, .card-title {
-          font-size: 18px;
+          font-size: 1.25rem;
           font-weight: 600;
           color: #1f2937;
           margin: 0 0 20px 0;
         }
 
-        .summary-item {
+        .items-list {
           display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 12px 0;
-          font-size: 14px;
-          color: #374151;
+          flex-direction: column;
+          gap: 16px;
         }
 
-        .summary-item.total {
-          font-size: 16px;
-          font-weight: 600;
-          color: #1f2937;
-          padding-top: 16px;
-        }
-
-        .summary-divider {
-          height: 1px;
-          background: #e5e7eb;
-          margin: 8px 0;
-        }
-
-        .detail-item {
+        .item-card {
           display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 20px;
+          align-items: flex-start;
+          gap: 16px;
+          padding: 20px;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          background: #f9fafb;
         }
 
-        .detail-item:last-child {
-          margin-bottom: 0;
-        }
-
-        .detail-icon {
-          width: 32px;
-          height: 32px;
-          background: #f3f4f6;
-          border-radius: 8px;
+        .item-icon {
+          width: 48px;
+          height: 48px;
+          background: var(--theme-color, #2A07F9);
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #6b7280;
-          font-size: 14px;
+          color: white;
+          font-size: 20px;
           flex-shrink: 0;
         }
 
-        .detail-info {
+        .item-details {
           flex: 1;
         }
 
-        .detail-label {
-          font-size: 12px;
-          color: #6b7280;
-          font-weight: 500;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin-bottom: 2px;
-        }
-
-        .detail-value {
-          font-size: 14px;
-          color: #1f2937;
-          font-weight: 500;
-        }
-
-        .technician-info {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-bottom: 20px;
-        }
-
-        .technician-avatar {
-          width: 48px;
-          height: 48px;
-          background: #f3f4f6;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #6b7280;
-          font-size: 20px;
-          overflow: hidden;
-        }
-
-        .technician-avatar img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .technician-name {
-          font-size: 16px;
+        .item-name {
+          font-size: 1.125rem;
           font-weight: 600;
           color: #1f2937;
-          margin: 0 0 2px 0;
+          margin: 0 0 8px 0;
         }
 
-        .technician-title {
-          font-size: 14px;
+        .item-variant {
+          font-size: 0.875rem;
           color: #6b7280;
-          margin: 0 0 4px 0;
+          margin: 0 0 8px 0;
         }
 
-        .technician-rating {
+        .item-meta {
           display: flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 12px;
-        }
-
-        .rating-stars {
-          color: #fbbf24;
-        }
-
-        .rating-value {
+          gap: 16px;
+          font-size: 0.875rem;
           color: #6b7280;
-          font-weight: 500;
+          margin-bottom: 12px;
         }
 
-        .contact-info {
+        .item-addons {
+          margin-top: 12px;
+          padding-top: 12px;
+          border-top: 1px solid #e5e7eb;
+        }
+
+        .item-addons h4 {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: #1f2937;
+          margin: 0 0 8px 0;
+        }
+
+        .addon-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 4px 0;
+          font-size: 0.875rem;
+          color: #6b7280;
+        }
+
+        .item-total {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #1f2937;
+          flex-shrink: 0;
+        }
+
+        .summary-details {
           display: flex;
           flex-direction: column;
-          gap: 8px;
-          margin-bottom: 16px;
+          gap: 12px;
+        }
+
+        .summary-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 0;
+          font-size: 0.875rem;
+        }
+
+        .summary-row.total-row {
+          border-top: 1px solid #e5e7eb;
+          padding-top: 16px;
+          margin-top: 8px;
+          font-size: 1rem;
+          font-weight: 600;
+          color: #1f2937;
+        }
+
+        .contact-details {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
         }
 
         .contact-item {
           display: flex;
           align-items: center;
-          gap: 8px;
-          font-size: 14px;
-          color: #374151;
+          gap: 12px;
+          font-size: 0.875rem;
+          color: #6b7280;
         }
 
         .contact-item i {
-          width: 16px;
+          width: 20px;
+          color: var(--theme-color, #2A07F9);
+        }
+
+        .address-details {
+          font-size: 0.875rem;
           color: #6b7280;
+          line-height: 1.6;
         }
 
-        .specialties {
-          border-top: 1px solid #e5e7eb;
-          padding-top: 16px;
+        .address-details p {
+          margin: 0 0 4px 0;
         }
 
-        .specialties-label {
-          font-size: 12px;
+        .notes-content {
+          font-size: 0.875rem;
           color: #6b7280;
-          font-weight: 500;
-          margin-bottom: 8px;
+          line-height: 1.6;
         }
 
-        .specialties-tags {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-        }
-
-        .specialty-tag {
-          padding: 4px 8px;
-          background: #f3f4f6;
-          border-radius: 12px;
-          font-size: 11px;
-          color: #6b7280;
-          font-weight: 500;
+        .notes-content p {
+          margin: 0;
         }
 
         /* Responsive Design */
         @media (max-width: 1024px) {
-          .content-grid {
+          .order-content-grid {
             grid-template-columns: 1fr;
-            gap: 24px;
           }
         }
 
         @media (max-width: 768px) {
-          .container {
-            padding: 0 16px;
-          }
-
-          .service-content {
-            padding: 24px 0;
-          }
-
-          .section, .summary-card, .details-card, .technician-card {
-            padding: 20px;
-            margin-bottom: 20px;
-          }
-
-          .service-info {
-            flex-wrap: wrap;
-            gap: 12px;
-          }
-
-          .service-title {
-            font-size: 20px;
-          }
-
-          .variation-card {
+          .order-header-content {
             flex-direction: column;
-            align-items: flex-start;
-            gap: 12px;
-          }
-
-          .variation-price {
-            align-self: flex-end;
-          }
-
-          .addon-item {
-            flex-wrap: wrap;
-            gap: 12px;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .service-header {
-            padding: 16px 0;
-          }
-
-          .header-content {
             gap: 16px;
           }
 
-          .service-info {
+          .order-status-badges {
+            align-self: flex-start;
+          }
+
+          .item-card {
             flex-direction: column;
-            align-items: flex-start;
+            gap: 12px;
           }
 
-          .section-title {
-            font-size: 18px;
+          .item-details {
+            order: 1;
           }
 
-          .variation-card, .addon-item {
-            padding: 16px;
+          .item-total {
+            order: 2;
+            align-self: flex-start;
           }
 
-          .technician-info {
-            flex-direction: column;
-            align-items: flex-start;
-            text-align: left;
-          }
-
-          .technician-avatar {
-            align-self: center;
+          .order-meta {
+            gap: 4px;
           }
         }
 
+
+        .services-container {
+          min-height: 100vh;
+          background: #f8fafc;
+        }
+
         .filters-section {
-          background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+          background: white;
           padding: 32px 24px;
           border-radius: 20px;
           margin-bottom: 32px;
@@ -1220,14 +880,6 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
         .status-filters :global(button.active) i,
         .filter-btn.active i {
           transform: scale(1.05) !important;
-        }
-
-        .tax-item {
-          font-size: 0.9rem;
-          color: #6b7280;
-          padding-left: 12px;
-          border-left: 2px solid #e5e7eb;
-          margin: 4px 0;
         }
       `}</style>
     </>

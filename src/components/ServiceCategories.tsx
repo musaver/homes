@@ -73,7 +73,15 @@ export default function ServiceCategories() {
                 <div key={category.id} className="col-lg-3 col-md-6">
                   <div className="job-categories-block-2 m-b30">
                     <div className="twm-media">
-                      <div className={`fa-solid ${category.iconName || 'fa-cog'}`}></div>
+                      {category.image ? (
+                        <img 
+                          src={category.image} 
+                          alt={category.name}
+                          style={{ width: '70px', height: '70px', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <div className={`fa-solid ${category.iconName || 'fa-cog'}`}></div>
+                      )}
                     </div>
                     <div className="twm-content">
                       <Link href={`/category/${category.slug}`}>{category.name}</Link>
@@ -86,7 +94,11 @@ export default function ServiceCategories() {
                 <div className="col-lg-3 col-md-6">
                   <div className="job-categories-block-2 m-b30">
                     <div className="twm-media">
-                      <div className={`fa-solid fa-ellipsis-h`}></div>
+                    <img 
+                          src={'/assets/img/icon/more-services.png'} 
+                          alt={'More Services'}
+                          style={{ width: '70px', height: '70px', objectFit: 'cover' }}
+                        />
                     </div>
                     <div className="twm-content">
                       <Link href={`/all-categories`}>More Services</Link>
@@ -156,6 +168,10 @@ export default function ServiceCategories() {
           line-height: 0px;
           transition: 0.5s all ease;
         }
+        .job-categories-block-2 .twm-media img {
+          border-radius: 8px;
+          transition: 0.5s all ease;
+        }
         .job-categories-block-2 .twm-content a {
           margin-bottom: 0px;
           display: block;
@@ -177,6 +193,9 @@ export default function ServiceCategories() {
           color: #fff;
         }
         .job-categories-block-2:hover .twm-media [class*='fa-'] {
+          transform: scale(0.8);
+        }
+        .job-categories-block-2:hover .twm-media img {
           transform: scale(0.8);
         }
       `}</style>

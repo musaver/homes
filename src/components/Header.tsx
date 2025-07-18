@@ -104,7 +104,7 @@ export default function Header() {
                 </a>
                 <ul className={`sub-menu th-submenu ${isSubmenuOpen ? 'th-open' : ''}`} style={{display: isSubmenuOpen ? 'block' : 'none'}}>
                   <li><Link href="/category/ac-cleaning" onClick={toggleMobileMenu}>AC Cleaning</Link></li>
-                  <li><Link href="/category/handyman-services" onClick={toggleMobileMenu}>Handyman Services</Link></li>
+                  <li><Link href="/category/handyman-maintenance-services" onClick={toggleMobileMenu}>Handyman Services</Link></li>
                   <li><Link href="/category/plumbing-services" onClick={toggleMobileMenu}>Plumbing Services</Link></li>
                   <li><Link href="/category/electrical-services" onClick={toggleMobileMenu}>Electrical Services</Link></li>
                   <li><Link href="/category/appliance-repair" onClick={toggleMobileMenu}>Appliance Repair</Link></li>
@@ -143,7 +143,7 @@ export default function Header() {
                             <Link href="/all-categories">Service</Link>
                             <ul className="sub-menu">
                               <li><Link href="/category/ac-cleaning">AC Cleaning</Link></li>
-                              <li><Link href="/category/handyman-services">Handyman Services</Link></li>
+                              <li><Link href="/category/handyman-maintenance-services">Handyman Services</Link></li>
                               <li><Link href="/category/plumbing-services">Plumbing Services</Link></li>
                               <li><Link href="/category/electrical-services">Electrical Services</Link></li>
                               <li><Link href="/category/appliance-repair">Appliance Repair</Link></li>
@@ -170,11 +170,9 @@ export default function Header() {
                           {session && isUserDropdownOpen && (
                             <div className="user-dropdown mobile-dropdown">
                               <div className="user-dropdown-header">
-                                <div className="user-avatar">
-                                  <i className="fas fa-user-circle"></i>
-                                </div>
+                                
                                 <div className="user-info">
-                                  <h4 className="user-name">{session.user?.name || 'User'}</h4>
+                                  <h4 className="user-name">{session.user?.name || 'Dashboard'}</h4>
                                   <p className="user-email">{session.user?.email}</p>
                                 </div>
                               </div>
@@ -246,11 +244,8 @@ export default function Header() {
                       {session && isUserDropdownOpen && (
                         <div className="user-dropdown dropdown">
                           <div className="user-dropdown-header">
-                            <div className="user-avatar">
-                              <i className="fas fa-user-circle"></i>
-                            </div>
                             <div className="user-info">
-                              <h4 className="user-name">{session.user?.name || 'User'}</h4>
+                              <h4 className="user-name">{session.user?.name || 'Dashboard'}</h4>
                               <p className="user-email">{session.user?.email}</p>
                             </div>
                           </div>

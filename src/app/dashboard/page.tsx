@@ -57,24 +57,56 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [session, status, router]);
 
+
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      console.log('🔍 Dashboard: Starting to fetch orders');
+      console.log('🔍 Dashboard: Session data:', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        userEmail: session?.user?.email,
+        userName: session?.user?.name
+      });
       
       // Fetch orders
-      const ordersResponse = await fetch('/api/orders');
+      const ordersResponse = await fetch('/api/orders', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      console.log('🔍 Dashboard: Orders response status:', ordersResponse.status);
+      console.log('🔍 Dashboard: Orders response headers:', Object.fromEntries(ordersResponse.headers.entries()));
+      
       if (ordersResponse.ok) {
         const ordersData = await ordersResponse.json();
-        setOrders(ordersData.orders || []);
+        console.log('🔍 Dashboard: Orders data received:', {
+          orderCount: Array.isArray(ordersData) ? ordersData.length : 0,
+          isArray: Array.isArray(ordersData)
+        });
+        
+        // Handle the new API response format (direct array instead of wrapped object)
+        const orders = Array.isArray(ordersData) ? ordersData : [];
+        setOrders(orders);
         
         // Calculate stats from orders
-        const totalServices = ordersData.orders?.length || 0;
-        const totalAmount = ordersData.orders?.reduce((sum: number, order: Order) => 
-          sum + parseFloat(order.totalAmount), 0) || 0;
-        const activeServices = ordersData.orders?.filter((order: Order) => 
-          ['pending', 'confirmed', 'processing', 'shipped'].includes(order.status)).length || 0;
-        const completedServices = ordersData.orders?.filter((order: Order) => 
-          order.status === 'delivered').length || 0;
+        const totalServices = orders.length;
+        const totalAmount = orders.reduce((sum: number, order: Order) => 
+          sum + parseFloat(order.totalAmount), 0);
+        const activeServices = orders.filter((order: Order) => 
+          ['pending', 'confirmed', 'processing', 'shipped'].includes(order.status)).length;
+        const completedServices = orders.filter((order: Order) => 
+          order.status === 'delivered').length;
+        
+        console.log('🔍 Dashboard: Calculated stats:', {
+          totalServices,
+          totalAmount,
+          activeServices,
+          completedServices
+        });
         
         setStats({
           totalServices,
@@ -82,9 +114,23 @@ export default function DashboardPage() {
           activeServices,
           completedServices
         });
+      } else {
+        let errorData;
+        try {
+          errorData = await ordersResponse.json();
+        } catch (jsonError) {
+          console.error('❌ Dashboard: Failed to parse error response as JSON:', jsonError);
+          errorData = { error: 'Failed to parse error response' };
+        }
+        console.error('❌ Dashboard: Failed to fetch orders:', {
+          status: ordersResponse.status,
+          statusText: ordersResponse.statusText,
+          headers: Object.fromEntries(ordersResponse.headers.entries()),
+          errorData
+        });
       }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+    } catch (error: any) {
+      console.error('❌ Dashboard: Error fetching orders:', error);
     } finally {
       setLoading(false);
     }
@@ -211,7 +257,7 @@ export default function DashboardPage() {
             <div className="status-filters">
               <Link className="filter-btn active" href="/dashboard"><i className="fas fa-th-large"></i> Dashboard </Link>
               <Link className="filter-btn " href="/dashboard/profile"><i className="fas fa-user"></i> Profile </Link>
-              <Link className="filter-btn " href="/dashboard/services"><i className="fas fa-shopping-cart"></i> Orders </Link>
+              <Link className="filter-btn " href="/dashboard/orders"><i className="fas fa-shopping-cart"></i> Orders </Link>
               <button className="filter-btn " onClick={() => signOut({ callbackUrl: '/login-register' })}><i className="fas fa-sign-out-alt"></i> Logout</button>
             </div>
           </div>
@@ -225,6 +271,7 @@ export default function DashboardPage() {
             <div className="welcome-section">
               <h2>Welcome back, {session.user?.name || 'User'}!</h2>
               <p>Here's an overview of your service activities and account status.</p>
+
             </div>
             
             {/* Stats Cards */}
@@ -254,7 +301,7 @@ export default function DashboardPage() {
                   <h2 className="section-title">Recent Orders</h2>
                   <p className="section-subtitle">Complete history of your order bookings</p>
                 </div>
-                <Link href="/dashboard/services" className="th-btn">
+                <Link href="/dashboard/orders" className="th-btn">
                   View All Orders
                 </Link>
               </div>

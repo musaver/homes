@@ -54,13 +54,37 @@ export default function ServicesPage() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/orders');
+      console.log('🔍 Services: Starting to fetch orders');
+      console.log('🔍 Services: Session data:', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        userEmail: session?.user?.email,
+        userName: session?.user?.name
+      });
+      
+      const response = await fetch('/api/orders', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      console.log('🔍 Services: Orders response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
-        setOrders(data.orders || []);
+        console.log('🔍 Services: Orders data received:', {
+          orderCount: Array.isArray(data) ? data.length : 0,
+          isArray: Array.isArray(data)
+        });
+        // Handle the new API response format (direct array instead of wrapped object)
+        setOrders(Array.isArray(data) ? data : []);
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Services: Failed to fetch orders:', errorData);
       }
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error('❌ Services: Error fetching orders:', error);
     } finally {
       setLoading(false);
     }

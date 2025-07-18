@@ -211,7 +211,9 @@ const VariationSelector: React.FC<{
               console.log('📊 Full variant data:', responseData);
               
               setDynamicPrice(variantPrice);
-              onPriceChange?.(variantPrice);
+              // Calculate the price difference from base price
+              const priceDifference = variantPrice - parseFloat(basePrice);
+              onPriceChange?.(priceDifference);
             } else {
               console.warn('⚠️ API returned unsuccessful response:', responseData);
               throw new Error(responseData.error || 'Variant price fetch unsuccessful');
@@ -233,7 +235,7 @@ const VariationSelector: React.FC<{
           // Fallback to base price if API call fails
           const baseNum = parseFloat(basePrice) || 0;
           setDynamicPrice(baseNum);
-          onPriceChange?.(baseNum);
+          onPriceChange?.(0); // No price difference from base
         } finally {
           setPriceLoading(false);
         }
@@ -241,7 +243,7 @@ const VariationSelector: React.FC<{
         // Not all variations selected, show base price
         const baseNum = parseFloat(basePrice) || 0;
         setDynamicPrice(baseNum);
-        onPriceChange?.(baseNum);
+        onPriceChange?.(0); // No price difference from base
         setPriceLoading(false);
       }
       
@@ -259,7 +261,7 @@ const VariationSelector: React.FC<{
     // Reset to base price
     const baseNum = parseFloat(basePrice) || 0;
     setDynamicPrice(baseNum);
-    onPriceChange?.(baseNum);
+    onPriceChange?.(0); // No price difference from base
   };
 
   /* Early exits */
@@ -500,15 +502,13 @@ const VariationSelector: React.FC<{
               <i className="fas fa-undo me-1" />
               Reset
             </button>*/}
-            <button
-              type="button"
-              className={` ${allChosen ? '' : 'btn-secondary'} th-btn`}
-              disabled={!allChosen || priceLoading}
-              onClick={() => allChosen && !priceLoading && onAddToCart?.()}
-            >
-              {/*<i className="fas fa-shopping-cart me-1" />*/}
-              {priceLoading ? 'Loading...' : 'Book Now'}
-            </button>
+            {/* Button removed - using central button now */}
+            {!allChosen && (
+              <div className="alert alert-info">
+                <i className="fas fa-info-circle me-2" />
+                Please select all variations to see final price
+              </div>
+            )}
     </div>
   );
 };
@@ -524,7 +524,8 @@ const GroupedAddonsSelector: React.FC<{
   onCheckoutReady?: (isReady: boolean) => void;
   onSelectionChange?: (selectedAddons: Array<{addonId: string, title: string, price: number, quantity: number, groupTitle: string}>) => void;
   onAddToCart?: () => void;
-}> = ({ addons, productType, basePrice, onCheckoutReady, onSelectionChange, onAddToCart }) => {
+  onPriceChange?: (price: number) => void;
+}> = ({ addons, productType, basePrice, onCheckoutReady, onSelectionChange, onAddToCart, onPriceChange }) => {
   const [addonQuantities, setAddonQuantities] = useState<{[key: string]: number}>({});
 
   // Group addons by group title
@@ -582,8 +583,10 @@ const GroupedAddonsSelector: React.FC<{
 
   // Notify parent when checkout readiness changes
   useEffect(() => {
-    onCheckoutReady?.(hasSelectedAddons);
-  }, [hasSelectedAddons, onCheckoutReady]);
+    // For group products, addons are required. For other types, they're optional
+    const isReady = productType === 'group' ? hasSelectedAddons : true;
+    onCheckoutReady?.(isReady);
+  }, [hasSelectedAddons, onCheckoutReady, productType]);
 
   // Notify parent when addon selection changes
   useEffect(() => {
@@ -600,25 +603,25 @@ const GroupedAddonsSelector: React.FC<{
         };
       });
     onSelectionChange?.(selectedAddons);
-  }, [addonQuantities, addons, onSelectionChange]);
+    
+    // Update parent's price with addon total
+    if (onPriceChange) {
+      onPriceChange(totalAddonPrice); // Just pass the addon price, not the total
+    }
+  }, [addonQuantities, addons, onSelectionChange, totalAddonPrice, basePrice, onPriceChange]);
 
   const resetAddons = () => {
     setAddonQuantities({});
   };
 
-  // Early exit if not a group product
-  if (productType !== 'group') {
-    return null;
-  }
+  // Show addons for all product types now
+  // if (productType !== 'group') {
+  //   return null;
+  // }
 
-  if (!addons || addons.length === 0) {
-    return (
-      <div className="alert alert-warning">
-        <i className="fas fa-exclamation-triangle me-2" />
-        No addons available for this group product.
-      </div>
-    );
-  }
+      if (!addons || addons.length === 0) {
+      return null; // Don't show anything if no addons available
+    }
 
   return (
     <div className="grouped-addons-selector">
@@ -701,34 +704,13 @@ const GroupedAddonsSelector: React.FC<{
         </div>
       ))}
 
-      {/* Summary */}
-      
-        {Object.entries(addonQuantities).filter(([, qty]) => qty > 0).length === 0 ? (
-          <>
-            
-            
-              <button
-                type="button"
-                className="btn btn-secondary btn-lg th-btn"
-                disabled={true}
-              >
-                
-                Book Now
-              </button>
-              
-          </>
-        ) : (
-          
-              <button
-                type="button"
-                className="th-btn"
-                disabled={!hasSelectedAddons}
-                onClick={() => hasSelectedAddons && onAddToCart?.()}
-              >
-                
-                Book Now {/* ({formatPrice(parseFloat(basePrice) + totalAddonPrice)}) */}
-              </button>
-        )}
+      {/* Summary - buttons removed, using central button now */}
+      {productType === 'group' && !hasSelectedAddons && (
+        <div className="alert alert-warning">
+          <i className="fas fa-exclamation-triangle me-2" />
+          Please select at least one addon to continue
+        </div>
+      )}
       
     </div>
   );
@@ -748,7 +730,9 @@ export default function ProjectDetailsPage() {
   const [error,   setError]   = useState<string | null>(null);
   
   // State for pricing and checkout readiness
-  const [currentPrice, setCurrentPrice] = useState<number>(0);
+  const [basePrice, setBasePrice] = useState<number>(0);
+  const [variationPrice, setVariationPrice] = useState<number>(0);
+  const [addonPrice, setAddonPrice] = useState<number>(0);
   const [variationComplete, setVariationComplete] = useState<boolean>(false);
   const [checkoutReady, setCheckoutReady] = useState<boolean>(false);
   
@@ -756,6 +740,13 @@ export default function ProjectDetailsPage() {
   const [selectedVariations, setSelectedVariations] = useState<Record<string, string>>({});
   const [selectedAddons, setSelectedAddons] = useState<Array<{addonId: string, title: string, price: number, quantity: number, groupTitle: string}>>([]);
   const [addingToCart, setAddingToCart] = useState(false);
+
+  // Calculate current price from all components
+  const currentPrice = useMemo(() => {
+    const total = basePrice + variationPrice + addonPrice;
+    console.log('Price calculation:', { basePrice, variationPrice, addonPrice, total });
+    return total;
+  }, [basePrice, variationPrice, addonPrice]);
 
   const [taxSettings, setTaxSettings] = useState<{
     vatTax: { enabled: boolean; type: 'percentage' | 'fixed'; value: number } | null;
@@ -797,7 +788,7 @@ export default function ProjectDetailsPage() {
 
         const productData = await res.json();
         setProduct(productData);
-        setCurrentPrice(parseFloat(productData.price) || 0);
+        setBasePrice(parseFloat(productData.price) || 0);
       } catch (e: any) {
         setError(e.message);
       } finally {
@@ -977,7 +968,7 @@ export default function ProjectDetailsPage() {
                               productType={product.productType}
                               basePrice={product.price}
                               product={product}
-                              onPriceChange={setCurrentPrice}
+                              onPriceChange={setVariationPrice}
                               onVariationComplete={setVariationComplete}
                               onSelectionChange={setSelectedVariations}
                               onAddToCart={handleAddToCart}
@@ -985,8 +976,8 @@ export default function ProjectDetailsPage() {
 
                             )}
 
-                            {/* Product Addons - After Description */}
-                            {product.productType === 'group' && (
+                            {/* Product Addons - After Description - Show for all product types */}
+                            {product.addons && product.addons.length > 0 && (
 
                             <GroupedAddonsSelector
                               addons={product.addons || []}
@@ -995,34 +986,35 @@ export default function ProjectDetailsPage() {
                               onCheckoutReady={setCheckoutReady}
                               onSelectionChange={setSelectedAddons}
                               onAddToCart={handleAddToCart}
+                              onPriceChange={setAddonPrice}
                             />
 
                             )}
 
-                            {/* Add to Cart button for simple products */}
-                            {product.productType === 'simple' && (
-                            
-                            <button
-                              type="button"
-                              className={`th-btn`}
-                              
-                              onClick={handleAddToCart}
-                              disabled={addingToCart}
-                            >
-                              {addingToCart ? (
-                                <>
-                                  <LoadingSpinner size="small" color="#ffffff" className="me-2" />
-                                  Adding to Cart...
-                                </>
-                              ) : (
-                                <>
-                                 
-                                  Book Now {/* ({formatPrice(parseFloat(product.price))}) */}
-                                </>
-                              )}
-                            </button>
-
-                            )}
+                            {/* Universal Book Now button - handles all product types */}
+                            <div className="universal-checkout">
+                              <button
+                                type="button"
+                                className="th-btn"
+                                onClick={handleAddToCart}
+                                disabled={
+                                  addingToCart || 
+                                  (product.productType === 'variable' && !variationComplete) ||
+                                  (product.productType === 'group' && !checkoutReady)
+                                }
+                              >
+                                {addingToCart ? (
+                                  <>
+                                    <LoadingSpinner size="small" color="#ffffff" className="me-2" />
+                                    Adding to Cart...
+                                  </>
+                                ) : (
+                                  <>
+                                    Book Now
+                                  </>
+                                )}
+                              </button>
+                            </div>
 
                             {!session && (
                             <p className="text-muted small mt-2">
@@ -1058,12 +1050,62 @@ export default function ProjectDetailsPage() {
                             )}
                           </div>
 
+                          {/* Show selected addons for reference only */}
+                          {selectedAddons && selectedAddons.length > 0 && (
+                            <div className="addons-section">
+                              <h6 className="section-title">Selected Add-ons</h6>
+                              <div className="addons-list">
+                                {selectedAddons.map((addon, index) => (
+                                  <div key={index} className="addon-item">
+                                    <div className="addon-info">
+                                      <span className="addon-name">{addon.title}</span>
+                                      {addon.quantity > 1 && (
+                                        <span className="addon-quantity"> × {addon.quantity}</span>
+                                      )}
+                                    </div>
+                                    <div className="addon-note">
+                                      <span className="text-muted">Included</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           <hr className="summary-divider" />
 
                           <div className="total-section">
                             {/* Base Price */}
                             <div className="total-row">
                               <span className="total-label">Base Price:</span>
+                              <span className="total-amount">
+                                <CurrencySymbol /> {basePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </div>
+
+                            {/* Variation Price Difference */}
+                            {variationPrice !== 0 && (
+                              <div className="total-row">
+                                <span className="total-label">Variation Adjustment:</span>
+                                <span className="total-amount">
+                                  <CurrencySymbol /> {variationPrice > 0 ? '+' : ''}{variationPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Addon Price */}
+                            {addonPrice > 0 && (
+                              <div className="total-row">
+                                <span className="total-label">Add-ons:</span>
+                                <span className="total-amount">
+                                  <CurrencySymbol /> +{addonPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Subtotal */}
+                            <div className="total-row subtotal-row">
+                              <span className="total-label">Subtotal:</span>
                               <span className="total-amount">
                                 <CurrencySymbol /> {currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
@@ -1183,6 +1225,57 @@ export default function ProjectDetailsPage() {
           color: black;
         }
 
+        .addons-section {
+          margin-bottom: 1rem;
+        }
+
+        .section-title {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #1f2937;
+          margin-bottom: 0.75rem;
+        }
+
+        .addons-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .addon-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.5rem 0;
+          border-bottom: 1px solid #f3f4f6;
+        }
+
+        .addon-item:last-child {
+          border-bottom: none;
+        }
+
+        .addon-info {
+          flex: 1;
+        }
+
+        .addon-name {
+          font-size: 0.9rem;
+          color: #374151;
+          font-weight: 500;
+        }
+
+        .addon-quantity {
+          font-size: 0.8rem;
+          color: #6b7280;
+          font-weight: 400;
+        }
+
+        .addon-note {
+          font-size: 0.8rem;
+          color: #6b7280;
+          font-style: italic;
+        }
+
         .summary-divider {
           border: none;
           border-top: 1px solid #e5e7eb;
@@ -1290,12 +1383,42 @@ export default function ProjectDetailsPage() {
         }
 
         .total-label {
-          font-size: 1.1rem;
-          color: #1f2937;
-          font-weight: 600;
+          font-size: 0.95rem;
+          color: #6b7280;
+          font-weight: 400;
         }
 
         .total-amount {
+          font-size: 0.95rem;
+          color: #1f2937;
+          font-weight: 500;
+        }
+
+        .subtotal-row {
+          border-top: 1px solid #e5e7eb;
+          padding-top: 0.75rem;
+          margin-top: 0.5rem;
+        }
+
+        .subtotal-row .total-label {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #1f2937;
+        }
+
+        .subtotal-row .total-amount {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #1f2937;
+        }
+
+        .grand-total .total-label {
+          font-size: 1.1rem;
+          color: #1f2937;
+          font-weight: 700;
+        }
+
+        .grand-total .total-amount {
           font-size: 1.25rem;
           color: #3b82f6;
           font-weight: 700;

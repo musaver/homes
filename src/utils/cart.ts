@@ -39,11 +39,9 @@ export const getCart = (): Cart => {
     const items: CartItem[] = stored ? JSON.parse(stored) : [];
     
     const total = items.reduce((sum, item) => {
+      // item.productPrice already includes addon prices from the new pricing system
       const itemTotal = item.productPrice * item.quantity;
-      const addonsTotal = item.selectedAddons?.reduce((addonSum, addon) => 
-        addonSum + (addon.price * addon.quantity), 0
-      ) || 0;
-      return sum + itemTotal + addonsTotal;
+      return sum + itemTotal;
     }, 0);
 
     const itemCount = items.reduce((count, item) => count + item.quantity, 0);

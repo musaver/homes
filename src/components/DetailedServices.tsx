@@ -1,54 +1,145 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect } from 'react'
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import LoadingSpinner from './LoadingSpinner'
+import { normalizeProductImages } from '@/utils/jsonUtils'
 
-const services = [
-  {
-    id: '01',
-    icon: 'fa-solid fa-faucet',
-    title: 'Plumbing Services',
-    description: 'From leaky taps to blocked drains, our certified plumbers ensure quick, clean, and reliable solutions. We also handle toilet repairs, water heater installations, and pump fixes.'
-  },
-  {
-    id: '02',
-    icon: 'fa-solid fa-wind',
-    title: 'AC Cleaning',
-    description: 'Keep your indoor air fresh and your AC system running efficiently. We offer basic filter cleaning, duct and coil deep cleaning, and full system servicing — including professional AC repairs.'
-  },
-  {
-    id: '03',
-    icon: 'fa-solid fa-bolt',
-    title: 'Electrical Services',
-    description: 'Keep your home powered and safe. We install lighting fixtures, repair sockets and switches, fix wiring, and more — all handled by licensed electricians.'
-  },
-  {
-    id: '04',
-    icon: 'fa-solid fa-microchip',
-    title: 'Appliance Repair',
-    description: 'Don&apos;t toss your broken appliances — we fix them! Our technicians repair washing machines, fridges, ovens, dishwashers, and dryers with expert precision.'
-  },
-  {
-    id: '05',
-    icon: 'fa-solid fa-paint-roller',
-    title: 'Home Painting',
-    description: 'Revive your home&apos;s look with professional painting. Whether it&apos;s a single apartment wall or a full villa repaint, our team delivers smooth finishes and clean edges.'
-  },
-  {
-    id: '06',
-    icon: 'fa-solid fa-house',
-    title: 'Home Renovation',
-    description: 'Upgrade your space with confidence. We handle bathroom and kitchen remodeling, flooring, tiling, outdoor renovations, and even CCTV installation — turning your vision into reality.'
-  },
-  {
-    id: '07',
-    icon: 'fa-solid fa-screwdriver-wrench',
-    title: 'Handyman Services',
-    description: 'Need a hand around the house? Our handyman services cover everything from mounting and drilling to curtain, light, and furniture installations. Pay hourly or per task.'
-  }
-]
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  shortDescription: string;
+  price: string;
+  images: string[] | string | null;
+  isFeatured: boolean;
+  categoryId: string;
+  categoryName: string;
+  categorySlug: string;
+  createdAt: string;
+}
+
+interface ApiResponse {
+  products: Product[];
+  total: number;
+}
 
 export default function DetailedServices() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchFeaturedProducts = async () => {
+      try {
+        const response = await fetch('/api/products/featured');
+        
+        if (response.ok) {
+          const result: ApiResponse = await response.json();
+          console.log('🔍 Featured Products Frontend Debug:', result);
+          setProducts(result.products);
+        } else {
+          setError('Failed to fetch featured products');
+        }
+      } catch (error) {
+        console.error('Error fetching featured products:', error);
+        setError('An error occurred while fetching featured products');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeaturedProducts();
+  }, []);
+
+  // Use the same image handling logic as category page
+  const getFirstProductImage = (imagesData: any): string | null => {
+    console.log('🖼️ Raw images data:', imagesData);
+    
+    const normalizedImages = normalizeProductImages(imagesData);
+    console.log('✅ Normalized images:', normalizedImages);
+    
+    const firstImage = normalizedImages.length > 0 ? normalizedImages[0] : null;
+    console.log('🎯 First image:', firstImage);
+    
+    return firstImage;
+  };
+
+  const getProductImage = (product: Product): string => {
+    const imageUrl = getFirstProductImage(product.images);
+    
+    if (imageUrl && imageUrl.trim() !== '') {
+      return imageUrl;
+    }
+    
+    return "/assets/img/gallery/project_2_1.jpg"; // Default fallback image
+  };
+
+  // ProductImage component with same logic as category page
+  const ProductImage = ({ imagesData, productName, width = 355, height = 250 }: { 
+    imagesData: any; 
+    productName: string; 
+    width?: number; 
+    height?: number; 
+  }) => {
+    const imageUrl = getFirstProductImage(imagesData);
+    
+    console.log('🖼️ ProductImage render:', {
+      productName,
+      imageUrl,
+      imagesData,
+      hasImageUrl: !!imageUrl
+    });
+    
+    if (!imageUrl) {
+      console.log('❌ No image URL found, showing fallback');
+      return (
+        <div 
+          className="d-flex align-items-center justify-content-center bg-light border"
+          style={{ width: `${width}px`, height: `${height}px` }}
+        >
+          <span className="text-muted small">No Image</span>
+        </div>
+      );
+    }
+
+    console.log('✅ Rendering image with URL:', imageUrl);
+
+    return (
+      <div style={{ position: 'relative', width: `${width}px`, height: `${height}px` }}>
+        <Image 
+          src={imageUrl}
+          alt={productName}
+          width={width}
+          height={height}
+          className="img-fluid"
+          style={{ objectFit: 'cover' }}
+          onLoadingComplete={() => {
+            console.log('✅ Next.js Image loaded successfully:', imageUrl);
+          }}
+          onError={(e) => {
+            console.error('💥 Next.js Image failed to load:', imageUrl);
+            console.error('Error event:', e);
+          }}
+        />
+        <div 
+          className="fallback-image d-none align-items-center justify-content-center bg-light border"
+          style={{ 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            width: '100%', 
+            height: '100%' 
+          }}
+        >
+          <span className="text-muted small">Image Error</span>
+        </div>
+      </div>
+    );
+  };
+
   useEffect(() => {
     // Initialize styling and swiper when component mounts
     const initializeComponent = () => {
@@ -137,7 +228,60 @@ export default function DetailedServices() {
     return () => {
       clearTimeout(timer);
     };
-  }, []);
+  }, [products]); // Re-run when products change
+
+  if (loading) {
+    return (
+      <section className="space" style={{padding: '30px 0px'}}>
+        <div className="container">
+          <div className="row justify-content-center">
+            <div className="col-xxl-6 col-xl-7 col-lg-7 col-md-8">
+              <div className="title-area text-center">
+                <span className="sub-title justify-content-center">Our Services</span>
+                <h2 className="sec-title">
+                  The Services We Provide For
+                  <span className="text-theme"> Our Customer</span>
+                </h2>
+              </div>
+            </div>
+          </div>
+          <div className="row justify-content-center">
+            <div className="col-12 text-center" style={{ minHeight: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <LoadingSpinner size="medium" color="#0d6efd" />
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="space" style={{padding: '30px 0px'}}>
+        <div className="container">
+          <div className="row justify-content-center">
+            <div className="col-xxl-6 col-xl-7 col-lg-7 col-md-8">
+              <div className="title-area text-center">
+                <span className="sub-title justify-content-center">Our Services</span>
+                <h2 className="sec-title">
+                  The Services We Provide For
+                  <span className="text-theme"> Our Customer</span>
+                </h2>
+              </div>
+            </div>
+          </div>
+          <div className="row justify-content-center">
+            <div className="col-12 text-center">
+              <div className="no-products-found">
+                <h3>Unable to Load Services</h3>
+                <p className="text-muted">{error}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="space" style={{padding: '30px 0px'}}>
@@ -166,51 +310,66 @@ export default function DetailedServices() {
             </div>
           </div>
         </div>
-        <div className="row gy-30 justify-content-center">
-          <div className="slider-area">
-            <div 
-              className="swiper th-slider" 
-              id="service-slider1"
-              data-slider-options='{"breakpoints":{"0":{"slidesPerView":1},"576":{"slidesPerView":"1"},"768":{"slidesPerView":"2"},"992":{"slidesPerView":"2"},"1200":{"slidesPerView":"3"}}}'
-            >
-              <div className="swiper-wrapper">
-                {services.map((service, index) => (
-                  <div key={index} className="swiper-slide">
-                    <div className="process-box-2-wrap" data-bg-src="/assets/img/icon/how-it-work-2-shape.png">
-                      <h3 className="box-count-title">{service.id}</h3>
-                      <div className="process-box-2">
-                        <div className="box-icon">
-                          <i className={service.icon}></i>
+
+        {products.length > 0 ? (
+          <div className="row gy-30 justify-content-center">
+            <div className="slider-area">
+              <div 
+                className="swiper th-slider" 
+                id="service-slider1"
+                data-slider-options='{"breakpoints":{"0":{"slidesPerView":1},"576":{"slidesPerView":"1"},"768":{"slidesPerView":"2"},"992":{"slidesPerView":"2"},"1200":{"slidesPerView":"3"}}}'
+              >
+                <div className="swiper-wrapper">
+                  {products.map((product, index) => (
+                    <div key={product.id} className="swiper-slide">
+                      <div className="service-card">
+                        <div className="box-img">
+                          <Link href={`/product-details/${product.slug}`}>
+                            <ProductImage 
+                              imagesData={product.images} 
+                              productName={product.name}
+                              width={355}
+                              height={250}
+                            />
+                          </Link>
                         </div>
-                        <div className="content">
-                          <h3 className="box-title">{service.title}</h3>
-                          <p className="box-text">{service.description}</p>
+                        <div className="box-content">
+                          <h3 className="box-title">
+                            <Link href={`/product-details/${product.slug}`}>
+                              {product.name}
+                            </Link>
+                          </h3>
+                          <p className="box-text d-none">
+                            {product.shortDescription || product.description || 'Professional service with expert quality and reliable results.'}
+                          </p>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+              <button data-slider-prev="#service-slider1" className="slider-arrow slider-prev">
+                <i className="far fa-arrow-left"></i>
+              </button>
+              <button data-slider-next="#service-slider1" className="slider-arrow slider-next">
+                <i className="far fa-arrow-right"></i>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="row justify-content-center">
+            <div className="col-12 text-center">
+              <div className="no-products-found">
+                <h3>No Featured Services Found</h3>
+                <p className="text-muted">There are currently no featured services available.</p>
+                <Link href="/all-categories" className="th-btn">
+                  View All Categories<i className="far fa-arrow-right ms-2"></i>
+                </Link>
               </div>
             </div>
-            <button data-slider-prev="#service-slider1" className="slider-arrow slider-prev">
-              <i className="far fa-arrow-left"></i>
-            </button>
-            <button data-slider-next="#service-slider1" className="slider-arrow slider-next">
-              <i className="far fa-arrow-right"></i>
-            </button>
           </div>
-        </div>
+        )}
       </div>
-
-      <style jsx>{`
-        .process-box-2 .content p {
-          height: 200px;
-        }
-        .box-icon i {
-          color: var(--theme-color3);
-          font-size: 30px;
-        }
-      `}</style>
     </section>
   )
 } 

@@ -9,9 +9,6 @@ import {
   int,
   decimal,
   json,
-  date,
-  time,
-  timestamp,
 } from 'drizzle-orm/mysql-core';
 
 // ✅ User table (customers)
@@ -89,7 +86,9 @@ export const categories = mysqlTable("categories", {
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   description: text("description"),
   image: varchar("image", { length: 500 }),
+  icon: varchar("icon", { length: 500 }), // For uploaded category icon files
   iconName: varchar("icon_name", { length: 100 }), // For category icons (e.g., FontAwesome icon names)
+  isFeatured: boolean("is_featured").default(false), // For featured categories
   parentId: varchar("parent_id", { length: 255 }), // For hierarchical categories
   sortOrder: int("sort_order").default(0),
   isActive: boolean("is_active").default(true),
@@ -280,20 +279,43 @@ export const orders = mysqlTable("orders", {
   paymentStatus: varchar("payment_status", { length: 50 }).default("pending"), // pending, paid, failed, refunded
   fulfillmentStatus: varchar("fulfillment_status", { length: 50 }).default("pending"), // pending, fulfilled, partially_fulfilled
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
-  vatAmount: decimal("vat_amount", { precision: 10, scale: 2 }).default("0.00"),
-  serviceAmount: decimal("service_amount", { precision: 10, scale: 2 }).default("0.00"),
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default('0.00'),
+  shippingAmount: decimal("shipping_amount", { precision: 10, scale: 2 }).default('0.00'),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default('0.00'),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).default("USD"),
+  
+  // Billing Address
+  billingFirstName: varchar("billing_first_name", { length: 100 }),
+  billingLastName: varchar("billing_last_name", { length: 100 }),
+  billingAddress1: varchar("billing_address1", { length: 255 }),
+  billingAddress2: varchar("billing_address2", { length: 255 }),
+  billingCity: varchar("billing_city", { length: 100 }),
+  billingState: varchar("billing_state", { length: 100 }),
+  billingPostalCode: varchar("billing_postal_code", { length: 20 }),
+  billingCountry: varchar("billing_country", { length: 100 }),
+  
+  // Shipping Address
+  shippingFirstName: varchar("shipping_first_name", { length: 100 }),
+  shippingLastName: varchar("shipping_last_name", { length: 100 }),
   shippingAddress1: varchar("shipping_address1", { length: 255 }),
   shippingAddress2: varchar("shipping_address2", { length: 255 }),
   shippingCity: varchar("shipping_city", { length: 100 }),
   shippingState: varchar("shipping_state", { length: 100 }),
   shippingPostalCode: varchar("shipping_postal_code", { length: 20 }),
   shippingCountry: varchar("shipping_country", { length: 100 }),
+  
+  shippingMethod: varchar("shipping_method", { length: 100 }),
+  trackingNumber: varchar("tracking_number", { length: 255 }),
   notes: text("notes"),
-  serviceDate: date("service_date"),
-  serviceTime: time("service_time"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").onUpdateNow(),
+  cancelReason: text("cancel_reason"),
+  
+  // Service scheduling fields
+  serviceDate: varchar("service_date", { length: 10 }), // YYYY-MM-DD format
+  serviceTime: varchar("service_time", { length: 8 }), // HH:MM format
+  
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
 // Order Items

@@ -60,9 +60,8 @@ export async function GET(
 
     const productData = product[0];
 
-    // If it's a group product, fetch addons with group information
+    // Fetch addons for all product types, not just group products
     let addonsData: any[] = [];
-    if (productData.productType === 'group') {
       const productAddonsQuery = await db
         .select({
           // Product addon fields
@@ -102,7 +101,6 @@ export async function GET(
         );
 
       addonsData = productAddonsQuery;
-    }
 
     // Debug logging
     console.log('Product ID:', productData.id);

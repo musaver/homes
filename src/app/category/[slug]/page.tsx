@@ -244,23 +244,8 @@ export default function CategoryPage() {
               
               <div className="row gy-30 ">
                 {data.products.map((product, index) => (
-
-               
-
-                   
-
                   <div key={product.id} className="col-xl-4 col-md-6">
                     <div className="service-card">
-                        <div className="box-top-wrap">
-                            <div className="box-top-left"><img src="assets/img/icon/service-desc-icon-1-1.svg" alt="" />
-                                <Link href={`/product-details/${product.slug}`} className='text-white'>Book Now</Link>
-                            </div>
-                            <div className="box-top-right">
-                              <Link href={`/product-details/${product.slug}`} className="icon">
-                              <i className="fa-regular fa-arrow-right-long text-white"></i>
-                              </Link>
-                            </div>
-                        </div>
                         <div className="box-img">
                           <Link href={`/product-details/${product.slug}`}>
                           <ProductImage 

@@ -209,7 +209,7 @@ export default function ProfilePage() {
             <div className="status-filters">
               <Link className="filter-btn" href="/dashboard"><i className="fas fa-th-large"></i> Dashboard </Link>
               <Link className="filter-btn active" href="/dashboard/profile"><i className="fas fa-user"></i> Profile </Link>
-              <Link className="filter-btn" href="/dashboard/services"><i className="fas fa-shopping-cart"></i> Orders </Link>
+              <Link className="filter-btn" href="/dashboard/orders"><i className="fas fa-shopping-cart"></i> Orders </Link>
               <button className="filter-btn" onClick={() => signOut({ callbackUrl: '/login-register' })}><i className="fas fa-sign-out-alt"></i> Logout</button>
             </div>
           </div>

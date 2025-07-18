@@ -23,6 +23,9 @@ export default function CheckoutPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   
+  // Step management
+  const [currentStep, setCurrentStep] = useState(1);
+  
   // Form states
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -111,287 +114,43 @@ export default function CheckoutPage() {
     }
   };
 
-  // Geocode address to get coordinates with proper error handling
-  const geocodeAddress = (address: string) => {
-    if (!window.google || !address || address.trim().length < 5) {
-      console.log('Skipping geocoding: insufficient data or Google Maps not loaded');
-      return;
-    }
-    
-    const geocoder = new window.google.maps.Geocoder();
-    
-    // Add a timeout to prevent hanging requests
-    const geocodePromise = new Promise((resolve, reject) => {
-      geocoder.geocode(
-        { 
-          address: address.trim(),
-          region: 'AE' // Bias results to UAE
-        }, 
-        (results: any, status: any) => {
-          if (status === 'OK' && results && results[0]) {
-            const location = results[0].geometry.location;
-            setMapCenter({ lat: location.lat(), lng: location.lng() });
-            console.log('Successfully geocoded address:', address);
-            resolve(results[0]);
-          } else {
-            console.warn('Geocoding failed:', status, 'for address:', address);
-            // Don't reject, just resolve with default coordinates
-            resolve({
-              geometry: {
-                location: new window.google.maps.LatLng(25.2048, 55.2708) // Dubai coordinates
-              }
-            });
-          }
-        }
-      );
-    });
+  // Track if user just navigated back to step 1
+  const [justNavigatedBack, setJustNavigatedBack] = useState(false);
+  
+  // Track previous values to detect actual changes
+  const [previousServiceDate, setPreviousServiceDate] = useState('');
+  const [previousServiceTime, setPreviousServiceTime] = useState('');
 
-    // Set a 5-second timeout for geocoding
-    const timeoutPromise = new Promise((resolve, reject) => {
-      setTimeout(() => {
-        console.warn('Geocoding timeout - using default coordinates');
-        resolve({
-          geometry: {
-            location: new window.google.maps.LatLng(25.2048, 55.2708) // Dubai coordinates
-          }
-        });
-      }, 5000);
-    });
-
-    Promise.race([geocodePromise, timeoutPromise])
-      .then((result: any) => {
-        const location = result.geometry.location;
-        setMapCenter({ lat: location.lat(), lng: location.lng() });
-      })
-      .catch(error => {
-        console.error('Geocoding error:', error);
-        // Fall back to default Dubai coordinates
-        setMapCenter({ lat: 25.2048, lng: 55.2708 });
-      });
-  };
-
-  // Initialize Google Maps Autocomplete with better error handling
-  const initializeAutocomplete = () => {
-    if (!window.google || !addressInputRef.current || isInitializingAutocomplete) {
-      console.log('Cannot initialize autocomplete: Google Maps not loaded, input ref not available, or already initializing');
-      return;
-    }
-
-    setIsInitializingAutocomplete(true);
-
-    try {
-      // Clear any existing autocomplete
-      if (autocompleteRef.current) {
-        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
-      }
-
-      const autocomplete = new window.google.maps.places.Autocomplete(
-        addressInputRef.current,
-        {
-          types: ['address'],
-          componentRestrictions: { country: 'ae' }, // Restrict to UAE addresses
-          fields: ['formatted_address', 'geometry', 'address_components'] // Limit fields to reduce quota usage
-        }
-      );
-
-      autocomplete.addListener('place_changed', () => {
-        try {
-          const place = autocomplete.getPlace();
-          
-          if (!place.geometry || !place.geometry.location) {
-            console.warn('No geometry found for selected place');
-            return;
-          }
-
-          const location = place.geometry.location;
-          setMapCenter({ lat: location.lat(), lng: location.lng() });
-          
-          if (place.formatted_address) {
-            setAddress(place.formatted_address);
-          }
-
-          // Parse address components safely
-          if (place.address_components && Array.isArray(place.address_components)) {
-            let newCity = '';
-            let newState = '';
-            let newPostalCode = '';
-
-            place.address_components.forEach((component: any) => {
-              if (!component || !component.types) return;
-
-              const types = component.types;
-              if (types.includes('locality') || types.includes('administrative_area_level_2')) {
-                newCity = component.long_name || '';
-              } else if (types.includes('administrative_area_level_1')) {
-                newState = component.long_name || '';
-              } else if (types.includes('postal_code')) {
-                newPostalCode = component.long_name || '';
-              }
-            });
-
-            if (newCity) setCity(newCity);
-            if (newState) setState(newState);
-            if (newPostalCode) setPostalCode(newPostalCode);
-          }
-        } catch (error) {
-          console.error('Error handling place selection:', error);
-        }
-      });
-
-      autocompleteRef.current = autocomplete;
-      console.log('Autocomplete initialized successfully');
-    } catch (error) {
-      console.error('Error initializing autocomplete:', error);
-    } finally {
-      setIsInitializingAutocomplete(false);
-    }
-  };
-
-  // Initialize Google Map with error handling
-  const initializeMap = () => {
-    console.log('initializeMap called', { google: !!window.google, showMap });
-    
-    if (!window.google || !showMap) {
-      console.log('Cannot initialize map: Google Maps not loaded or map not shown');
-      return;
-    }
-
-    const mapElement = document.getElementById('google-map');
-    console.log('Map element found:', !!mapElement);
-    
-    if (!mapElement) {
-      console.log('Map element not found');
-      return;
-    }
-
-    try {
-      console.log('Creating map with center:', mapCenter);
-      const map = new window.google.maps.Map(mapElement, {
-        center: mapCenter,
-        zoom: 13,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        styles: [], // Use default styling
-      });
-
-      console.log('Creating marker');
-      const marker = new window.google.maps.Marker({
-        position: mapCenter,
-        map: map,
-        draggable: true,
-        title: 'Drag to select your location',
-        animation: window.google.maps.Animation.DROP,
-      });
-
-      // Handle marker drag with debouncing
-      let dragTimeout: NodeJS.Timeout;
-      marker.addListener('dragend', () => {
-        clearTimeout(dragTimeout);
-        dragTimeout = setTimeout(() => {
-          try {
-            const position = marker.getPosition();
-            if (!position) {
-              console.log('No position found for dragged marker');
-              return;
-            }
-
-            const lat = position.lat();
-            const lng = position.lng();
-            setMapCenter({ lat, lng });
-            
-            // Reverse geocode to get address with error handling
-            const geocoder = new window.google.maps.Geocoder();
-            geocoder.geocode(
-              { 
-                location: { lat, lng },
-                region: 'AE' // Bias results to UAE
-              }, 
-              (results: any, status: any) => {
-                if (status === 'OK' && results && results[0]) {
-                  if (results[0].formatted_address) {
-                    setAddress(results[0].formatted_address);
-                  }
-                  
-                  // Parse address components safely
-                  if (results[0].address_components && Array.isArray(results[0].address_components)) {
-                    let newCity = '';
-                    let newState = '';
-                    let newPostalCode = '';
-                    
-                    results[0].address_components.forEach((component: any) => {
-                      if (!component || !component.types) return;
-                      
-                      const types = component.types;
-                      if (types.includes('locality') || types.includes('administrative_area_level_2')) {
-                        newCity = component.long_name || '';
-                      } else if (types.includes('administrative_area_level_1')) {
-                        newState = component.long_name || '';
-                      } else if (types.includes('postal_code')) {
-                        newPostalCode = component.long_name || '';
-                      }
-                    });
-                    
-                    if (newCity) setCity(newCity);
-                    if (newState) setState(newState);
-                    if (newPostalCode) setPostalCode(newPostalCode);
-                  }
-                } else {
-                  console.warn('Reverse geocoding failed:', status);
-                }
-              }
-            );
-          } catch (error) {
-            console.error('Error in marker dragend listener:', error);
-          }
-        }, 500); // Debounce by 500ms
-      });
-
-      mapRef.current = map;
-      markerRef.current = marker;
-      console.log('Map initialized successfully');
-    } catch (error) {
-      console.error('Error initializing map:', error);
-    }
-  };
-
-  // Initialize Google Maps when the script is loaded
+  // Auto-advance to step 2 when both date and time are selected (but not when navigating back)
   useEffect(() => {
-    const handleGoogleMapsLoaded = () => {
-      console.log('Google Maps loaded event received');
-      setGoogleMapsLoaded(true);
-      initializeAutocomplete();
-    };
-
-    // Check if Google Maps is already loaded
-    if (window.google && window.google.maps) {
-      console.log('Google Maps already loaded');
-      handleGoogleMapsLoaded();
-    } else {
-      // Listen for the custom event
-      window.addEventListener('google-maps-loaded', handleGoogleMapsLoaded);
+    // Only auto-advance if:
+    // 1. We're on step 1
+    // 2. Both date and time are selected
+    // 3. User didn't just navigate back
+    // 4. At least one of the values actually changed (not just pre-filled)
+    const dateChanged = serviceDate && serviceDate !== previousServiceDate;
+    const timeChanged = serviceTime && serviceTime !== previousServiceTime;
+    
+    if (currentStep === 1 && serviceDate && serviceTime && !justNavigatedBack && (dateChanged || timeChanged)) {
+      // Add a small delay for better UX
+      const timer = setTimeout(() => {
+        setCurrentStep(2);
+      }, 500);
+      return () => clearTimeout(timer);
     }
-
-    return () => {
-      window.removeEventListener('google-maps-loaded', handleGoogleMapsLoaded);
-    };
-  }, []);
-
-  // Initialize map when showMap or mapCenter changes
-  useEffect(() => {
-    if (googleMapsLoaded && showMap) {
-      console.log('Initializing map');
-      setTimeout(() => initializeMap(), 100); // Small delay to ensure DOM is ready
+    
+    // Update previous values
+    setPreviousServiceDate(serviceDate);
+    setPreviousServiceTime(serviceTime);
+    
+    // Reset the navigation flag after a short delay
+    if (justNavigatedBack) {
+      const resetTimer = setTimeout(() => {
+        setJustNavigatedBack(false);
+      }, 100);
+      return () => clearTimeout(resetTimer);
     }
-  }, [googleMapsLoaded, showMap, mapCenter]);
-
-  // Update marker position when mapCenter changes
-  useEffect(() => {
-    if (markerRef.current && mapRef.current) {
-      markerRef.current.setPosition(mapCenter);
-      mapRef.current.setCenter(mapCenter);
-    }
-  }, [mapCenter]);
+  }, [serviceDate, serviceTime, currentStep, justNavigatedBack, previousServiceDate, previousServiceTime]);
 
   // Fetch tax settings
   useEffect(() => {
@@ -406,13 +165,39 @@ export default function CheckoutPage() {
     getTaxSettings();
   }, []);
 
-  // Calculate total taxes whenever cart changes
+  // Calculate taxes when cart changes
   useEffect(() => {
-    if (taxSettings && cart.total > 0) {
+    if (taxSettings && cart.items.length > 0) {
       const taxes = calculateTaxes(cart.total, taxSettings.vatTax, taxSettings.serviceTax);
       setTotalTaxCalculation(taxes);
+    } else {
+      setTotalTaxCalculation({
+        vatAmount: 0,
+        serviceAmount: 0,
+        totalTaxAmount: 0,
+        finalAmount: cart.total,
+      });
     }
   }, [cart.total, taxSettings]);
+
+  const handleNextStep = () => {
+    if (currentStep === 1) {
+      if (!serviceDate || !serviceTime) {
+        setError('Please select both service date and time');
+        return;
+      }
+      setError('');
+      setCurrentStep(2);
+    }
+  };
+
+  const handlePreviousStep = () => {
+    if (currentStep === 2) {
+      setJustNavigatedBack(true);
+      setCurrentStep(1);
+      setError('');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -504,25 +289,15 @@ export default function CheckoutPage() {
         <section className="space-extra-bottom">
           <div className="container">
             <div className="row justify-content-center">
-              <div className="col-xl-8 col-lg-10">
-                <div className="page-single">
-                  <div className="page-content text-center">
-                    <div className="success-icon mb-4">
-                      <i className="fas fa-check-circle text-success" style={{fontSize: '4rem'}}></i>
-                    </div>
-                    <h2 className="mb-3">Order Placed Successfully!</h2>
-                    <div className="alert alert-success">
-                      {success}
-                    </div>
-                    <p className="mb-4">
-                      You will receive an order confirmation email shortly. 
-                      Your order is currently pending and will be processed by our team.
-                    </p>
-                    <p className="text-muted">Redirecting to dashboard in 3 seconds...</p>
-                    <Link href="/dashboard" className="th-btn star-btn">
-                      Go to Dashboard
-                    </Link>
+              <div className="col-lg-8">
+                <div className="text-center">
+                  <div className="success-icon mb-4">
+                    <i className="fas fa-check-circle text-success" style={{ fontSize: '4rem' }}></i>
                   </div>
+                  <h2 className="mb-3">Order Placed Successfully!</h2>
+                  <p className="lead mb-4">{success}</p>
+                  <p className="text-muted">Redirecting to your dashboard...</p>
+                  <LoadingSpinner size="small" />
                 </div>
               </div>
             </div>
@@ -545,8 +320,22 @@ export default function CheckoutPage() {
                 <div className="page-content">
                   <div className="auth-card mb-4">
                     <div className="auth-card-body p-4">
-                      <h3 className="mb-4">Billing Information</h3>
                       
+                      {/* Step Indicator */}
+                      <div className="step-indicator mb-4">
+                        <div className="steps-container">
+                          <div className={`step ${currentStep >= 1 ? 'active' : ''} ${currentStep > 1 ? 'completed' : ''}`}>
+                            <div className="step-number">1</div>
+                            <div className="step-label">Service Schedule</div>
+                          </div>
+                          <div className="step-line"></div>
+                          <div className={`step ${currentStep >= 2 ? 'active' : ''}`}>
+                            <div className="step-number">2</div>
+                            <div className="step-label">Billing Details</div>
+                          </div>
+                        </div>
+                      </div>
+
                       {error && (
                         <div className="alert alert-danger mb-4">
                           {error}
@@ -554,117 +343,191 @@ export default function CheckoutPage() {
                       )}
 
                       <form onSubmit={handleSubmit}>
-                        <div className="row">
-                          <div className="col-md-12 mb-3">
-                            <label className="form-label">
-                              Full Name <span className="text-danger">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={name}
-                              onChange={(e) => setName(e.target.value)}
-                              placeholder="Enter your full name"
-                              required
+                        {/* Step 1: Service Date & Time */}
+                        {currentStep === 1 && (
+                          <div className="step-content">
+                            <h3 className="mb-4">When would you like the service?</h3>
+                            <p className="text-muted mb-4">Select your preferred date and time for the service.</p>
+                            
+                            <DateTimePicker
+                              selectedDate={serviceDate}
+                              selectedTime={serviceTime}
+                              onDateChange={setServiceDate}
+                              onTimeChange={setServiceTime}
                             />
-                          </div>
 
-                          <div className="col-md-6 mb-3">
-                            <label className="form-label">
-                              Email Address
-                            </label>
-                            <input
-                              type="email"
-                              className="form-control"
-                              value={session.user?.email || ''}
-                              disabled
-                            />
-                            <small className="text-muted">From your account</small>
-                          </div>
-
-                          <div className="col-md-6 mb-3">
-                            <label className="form-label">
-                              Phone Number <span className="text-danger">*</span>
-                            </label>
-                            <input
-                              type="tel"
-                              className="form-control"
-                              value={phone}
-                              onChange={(e) => setPhone(e.target.value)}
-                              placeholder="Enter your phone number"
-                              required
-                            />
-                          </div>
-
-                          <div className="col-12 mb-3">
-                            <label className="form-label">
-                              Address <span className="text-danger">*</span>
-                            </label>
-                            <AddressMap onAddressSelect={setAddress} />
-                            {address && (
-                              <div className="mt-2">
-                                {/*
-                                <strong>Selected Address:</strong>
-                                <p className="mb-0 text-muted">{address}</p>
-                                */}
-                              </div>
-                            )}
-                          </div>
-
-                          <DateTimePicker
-                            selectedDate={serviceDate}
-                            selectedTime={serviceTime}
-                            onDateChange={setServiceDate}
-                            onTimeChange={setServiceTime}
-                          />
-                        </div>
-
-                        {/* Order Notes Section */}
-                        <div className="row mt-4">
-                          <div className="col-12">
-                            <h4 className="mb-3">Order Notes</h4>
-                            <div className="mb-3">
-                              <label className="form-label">
-                                Special Instructions
-                              </label>
-                              <textarea
-                                className="form-control"
-                                rows={4}
-                                value={specialInstructions}
-                                onChange={(e) => setSpecialInstructions(e.target.value)}
-                                placeholder="Any special instructions or notes for our team? (Optional)"
-                              />
-                              <small className="text-muted">
-                                <i className="fas fa-info-circle me-1"></i>
-                                Let us know if you have any specific requirements or requests
-                              </small>
+                            <div className="d-flex justify-content-end mt-4">
+                              <button
+                                type="button"
+                                className="th-btn"
+                                onClick={handleNextStep}
+                                disabled={!serviceDate || !serviceTime}
+                              >
+                                Next: Billing Details
+                                <i className="fas fa-arrow-right ms-2"></i>
+                              </button>
                             </div>
                           </div>
-                        </div>
+                        )}
 
-                        <div className="d-flex justify-content-between align-items-center">
-                          <Link href="/" className="btn btn-outline-secondary">
-                            <i className="fas fa-arrow-left me-2"></i>
-                            Continue Shopping
-                          </Link>
-                          
-                          <button 
-                            type="submit" 
-                            className="th-btn"
-                            disabled={loading}
-                          >
-                            {loading ? (
-                              <>
-                                <LoadingSpinner size="small" color="#ffffff" className="me-2" />
-                                Processing...
-                              </>
-                            ) : (
-                              <>
-                                Place Order (<CurrencySymbol /> {formatPrice(totalTaxCalculation.finalAmount)})
-                              </>
-                            )}
-                          </button>
-                        </div>
+                        {/* Step 2: Billing Information */}
+                        {currentStep === 2 && (
+                          <div className="step-content">
+                            <div className="d-flex justify-content-between align-items-center mb-4">
+                              <h3 className="mb-0">Billing Information</h3>
+                              <button
+                                type="button"
+                                className="btn btn-outline-secondary btn-sm"
+                                onClick={handlePreviousStep}
+                              >
+                                <i className="fas fa-arrow-left me-2"></i>
+                                Back
+                              </button>
+                            </div>
+                            
+                            <div className="row">
+                              <div className="col-md-12 mb-3">
+                                <label className="form-label">
+                                  Full Name <span className="text-danger">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={name}
+                                  onChange={(e) => setName(e.target.value)}
+                                  placeholder="Enter your full name"
+                                  required
+                                />
+                              </div>
+
+                              <div className="col-md-6 mb-3">
+                                <label className="form-label">
+                                  Email Address
+                                </label>
+                                <input
+                                  type="email"
+                                  className="form-control"
+                                  value={session.user?.email || ''}
+                                  disabled
+                                />
+                                <small className="text-muted">From your account</small>
+                              </div>
+
+                              <div className="col-md-6 mb-3">
+                                <label className="form-label">
+                                  Phone Number <span className="text-danger">*</span>
+                                </label>
+                                <input
+                                  type="tel"
+                                  className="form-control"
+                                  value={phone}
+                                  onChange={(e) => setPhone(e.target.value)}
+                                  placeholder="Enter your phone number"
+                                  required
+                                />
+                              </div>
+
+                              <div className="col-12 mb-3">
+                                <label className="form-label">
+                                  Address <span className="text-danger">*</span>
+                                </label>
+                                <AddressMap onAddressSelect={setAddress} />
+                                {address && (
+                                  <div className="mt-2">
+                                    {/*
+                                    <strong>Selected Address:</strong>
+                                    <p className="mb-0 text-muted">{address}</p>
+                                    */}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="col-md-6 mb-3">
+                                <label className="form-label">City</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={city}
+                                  onChange={(e) => setCity(e.target.value)}
+                                  placeholder="City"
+                                />
+                              </div>
+
+                              <div className="col-md-6 mb-3">
+                                <label className="form-label">State/Emirate</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={state}
+                                  onChange={(e) => setState(e.target.value)}
+                                  placeholder="State/Emirate"
+                                />
+                              </div>
+
+                              <div className="col-md-6 mb-3">
+                                <label className="form-label">Postal Code</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={postalCode}
+                                  onChange={(e) => setPostalCode(e.target.value)}
+                                  placeholder="Postal Code"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Order Notes Section */}
+                            <div className="row mt-4">
+                              <div className="col-12">
+                                <h4 className="mb-3">Order Notes</h4>
+                                <div className="mb-3">
+                                  <label className="form-label">
+                                    Special Instructions
+                                  </label>
+                                  <textarea
+                                    className="form-control"
+                                    rows={4}
+                                    value={specialInstructions}
+                                    onChange={(e) => setSpecialInstructions(e.target.value)}
+                                    placeholder="Any special instructions or notes for our team? (Optional)"
+                                  />
+                                  <small className="text-muted">
+                                    <i className="fas fa-info-circle me-1"></i>
+                                    Let us know if you have any specific requirements or requests
+                                  </small>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="d-flex justify-content-between mt-4">
+                              <button
+                                type="button"
+                                className="btn btn-outline-secondary"
+                                onClick={handlePreviousStep}
+                              >
+                                <i className="fas fa-arrow-left me-2"></i>
+                                Back to Schedule
+                              </button>
+                              
+                              <button 
+                                type="submit" 
+                                className="th-btn"
+                                disabled={loading}
+                              >
+                                {loading ? (
+                                  <>
+                                    <LoadingSpinner size="small" color="#ffffff" className="me-2" />
+                                    Processing...
+                                  </>
+                                ) : (
+                                  <>
+                                    Place Order (<CurrencySymbol /> {formatPrice(totalTaxCalculation.finalAmount)})
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </form>
                     </div>
                   </div>
@@ -676,7 +539,35 @@ export default function CheckoutPage() {
             <div className="col-lg-4">
               <div className="checkout-sidebar">
                 <div className="order-summary-widget">
-                  <h4 className="summary-title">Summary</h4>
+                  <h4 className="summary-title">Order Summary</h4>
+                  
+                  {/* Service Schedule Summary */}
+                  {serviceDate && serviceTime && (
+                    <div className="service-schedule-summary mb-4">
+                      <h6 className="text-muted mb-2">Service Schedule</h6>
+                      <div className="schedule-info">
+                        <div className="schedule-item">
+                          <i className="fas fa-calendar me-2 text-primary"></i>
+                          <span>{new Date(serviceDate).toLocaleDateString('en-US', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}</span>
+                        </div>
+                        <div className="schedule-item">
+                          <i className="fas fa-clock me-2 text-primary"></i>
+                          <span>{(() => {
+                            const [hours, minutes] = serviceTime.split(':');
+                            const hour12 = parseInt(hours) > 12 ? parseInt(hours) - 12 : parseInt(hours);
+                            const ampm = parseInt(hours) >= 12 ? 'PM' : 'AM';
+                            return `${hour12 === 0 ? 12 : hour12}:${minutes} ${ampm}`;
+                          })()}</span>
+                        </div>
+                      </div>
+                      <hr className="summary-divider" />
+                    </div>
+                  )}
                   
                   {cart.items.map((item: CartItem, index) => (
                     <div key={index} className="order-item">
@@ -715,14 +606,24 @@ export default function CheckoutPage() {
                       )}
 
                       <div className="item-total-section">
-                        <div className="price-row">
-                          <span className="price-label">Item Total:</span>
-                          <span className="item-price">
-                            <CurrencySymbol />
-                            {formatPrice(item.productPrice * item.quantity + 
-                              (item.selectedAddons ? item.selectedAddons.reduce((sum, addon) => sum + (addon.price * addon.quantity), 0) : 0)
-                            )}
-                          </span>
+                        <div className="price-breakdown">
+                          <div className="price-row">
+                            <span className="price-label">Total Price:</span>
+                            <span className="item-price">
+                              <CurrencySymbol /> {formatPrice(item.productPrice)}
+                            </span>
+                          </div>
+                          {item.selectedAddons && item.selectedAddons.length > 0 && (
+                            <div className="addon-details d-none">
+                              <small className="text-muted">Includes selected add-ons:</small>
+                              {item.selectedAddons.map((addon, addonIndex) => (
+                                <div key={addonIndex} className="addon-detail-item">
+                                  <span className="addon-name">{addon.title}</span>
+                                  {addon.quantity > 1 && <span className="addon-qty"> × {addon.quantity}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -738,7 +639,7 @@ export default function CheckoutPage() {
                       <span className="total-amount"><CurrencySymbol /> {formatPrice(cart.total)}</span>
                     </div>
 
-                    {taxSettings?.vatTax && (
+                    {taxSettings?.vatTax?.enabled && (
                       <div className="total-row tax-row">
                         <span className="total-label">
                           VAT ({taxSettings.vatTax.type === 'percentage' ? `${taxSettings.vatTax.value}%` : 'Fixed'}):
@@ -749,7 +650,7 @@ export default function CheckoutPage() {
                       </div>
                     )}
 
-                    {taxSettings?.serviceTax && (
+                    {taxSettings?.serviceTax?.enabled && (
                       <div className="total-row tax-row">
                         <span className="total-label">
                           Service Tax ({taxSettings.serviceTax.type === 'percentage' ? `${taxSettings.serviceTax.value}%` : 'Fixed'}):
@@ -762,9 +663,9 @@ export default function CheckoutPage() {
 
                     <hr className="summary-divider" />
 
-                    <div className="total-row grand-total-row">
+                    <div className="total-row final-total-row">
                       <span className="total-label">Total:</span>
-                      <span className="total-amount">
+                      <span className="total-amount final-amount">
                         <CurrencySymbol /> {formatPrice(totalTaxCalculation.finalAmount)}
                       </span>
                     </div>
@@ -775,8 +676,109 @@ export default function CheckoutPage() {
           </div>
         </div>
       </section>
-      <Footer />
+
       <style jsx>{`
+        .step-indicator {
+          margin-bottom: 2rem;
+        }
+
+        .steps-container {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          max-width: 400px;
+          margin: 0 auto;
+        }
+
+        .step {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          flex: 1;
+        }
+
+        .step-number {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: #e5e7eb;
+          color: #6b7280;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 600;
+          font-size: 1.1rem;
+          margin-bottom: 0.5rem;
+          transition: all 0.3s ease;
+        }
+
+        .step.active .step-number {
+          background: var(--theme-color, #2A07F9);
+          color: white;
+        }
+
+        .step.completed .step-number {
+          background: #10b981;
+          color: white;
+        }
+
+        .step-label {
+          font-size: 0.9rem;
+          color: #6b7280;
+          font-weight: 500;
+        }
+
+        .step.active .step-label {
+          color: var(--theme-color, #2A07F9);
+          font-weight: 600;
+        }
+
+        .step.completed .step-label {
+          color: #10b981;
+        }
+
+        .step-line {
+          flex: 1;
+          height: 2px;
+          background: #e5e7eb;
+          margin: 0 1rem;
+          margin-top: -20px;
+        }
+
+        .step.completed + .step-line {
+          background: #10b981;
+        }
+
+        .step-content {
+          animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .service-schedule-summary {
+          background: #f8fafc;
+          border-radius: 8px;
+          padding: 1rem;
+          border: 1px solid #e5e7eb;
+        }
+
+        .schedule-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .schedule-item {
+          display: flex;
+          align-items: center;
+          font-size: 0.9rem;
+          color: #374151;
+        }
+
         .checkout-sidebar {
           position: sticky;
           top: 120px;
@@ -830,62 +832,94 @@ export default function CheckoutPage() {
           border-radius: 24px;
           font-weight: 500;
           color: black;
-          margin-right: 0.5rem;
+          margin-right: 8px;
         }
 
         .addons-section {
-          margin-bottom: 0.75rem;
+          margin-bottom: 1rem;
         }
 
         .addons-list {
-          margin-left: 0;
-        }
-
-        .addon-group {
-          margin-bottom: 0.75rem;
-        }
-
-        .addon-group:last-child {
-          margin-bottom: 0;
-        }
-
-        .addon-group-header {
-          font-size: 0.9rem;
-          color: #374151;
-          font-weight: 600;
-          margin-bottom: 0.25rem;
-          margin-left: 0.25rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
         }
 
         .addon-item {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 0.5rem;
-          padding-left: 0.5rem;
-        }
-
-        .addon-name {
           font-size: 0.9rem;
           color: #6b7280;
+          padding: 0.25rem 0;
+        }
+
+        .addon-title {
           flex: 1;
         }
 
-        .addon-price {
-          font-size: 0.9rem;
-          color: #1f2937;
+        .addon-quantity {
           font-weight: 500;
+          color: #374151;
         }
 
         .item-total-section {
-          margin-bottom: 1rem;
+          border-top: 1px solid #e5e7eb;
+          padding-top: 0.75rem;
+        }
+
+        .price-breakdown {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .subtotal-item {
+          border-top: 1px solid #f3f4f6;
+          padding-top: 0.5rem;
+          margin-top: 0.25rem;
+        }
+
+        .subtotal-item .price-label {
+          font-weight: 600;
+          color: #374151;
+        }
+
+        .subtotal-item .item-price {
+          font-weight: 600;
+          color: #374151;
+        }
+
+        .addon-details {
+          margin-top: 0.5rem;
+          padding: 0.5rem;
+          background: #f9fafb;
+          border-radius: 6px;
+          border: 1px solid #e5e7eb;
+        }
+
+        .addon-detail-item {
+          display: flex;
+          align-items: center;
+          font-size: 0.85rem;
+          color: #374151;
+          margin-top: 0.25rem;
+        }
+
+        .addon-name {
+          font-weight: 500;
+        }
+
+        .addon-qty {
+          color: #6b7280;
+          margin-left: 0.25rem;
         }
 
         .price-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 0.75rem;
+          margin-bottom: 0.5rem;
         }
 
         .price-label {
@@ -894,83 +928,81 @@ export default function CheckoutPage() {
           font-weight: 400;
         }
 
-        .item-price {
+        .item-price, .total-amount {
           font-size: 0.95rem;
           color: #1f2937;
           font-weight: 500;
         }
 
-        .item-divider {
+        .summary-divider, .item-divider {
           border: none;
-          border-top: 1px solid #f3f4f6;
+          border-top: 1px solid #e5e7eb;
           margin: 1rem 0;
         }
 
-        .summary-divider {
-          border: none;
-          border-top: 1px solid #e5e7eb;
-          margin: 0.75rem 0;
-        }
-
         .total-section {
-          padding-top: 0.5rem;
+          margin-top: 1rem;
         }
 
         .total-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
+          margin-bottom: 0.75rem;
         }
 
-        .total-label {
+        .subtotal-row, .tax-row {
+          font-size: 0.95rem;
+        }
+
+        .final-total-row {
           font-size: 1.1rem;
-          color: #1f2937;
           font-weight: 600;
+          padding-top: 0.75rem;
+          border-top: 2px solid #e5e7eb;
         }
 
-        .total-amount {
+        .final-amount {
           font-size: 1.25rem;
           color: #3b82f6;
           font-weight: 700;
         }
 
+        .total-label {
+          color: #1f2937;
+        }
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
-          .checkout-sidebar {
-            position: static;
-            top: auto;
+          .steps-container {
+            max-width: 300px;
+          }
+          
+          .step-number {
+            width: 35px;
+            height: 35px;
+            font-size: 1rem;
+          }
+          
+          .step-label {
+            font-size: 0.8rem;
           }
           
           .order-summary-widget {
             padding: 20px;
-            margin-bottom: 1rem;
           }
           
           .summary-title {
             font-size: 1.3rem;
           }
           
-          .total-amount {
+          .final-amount {
             font-size: 1.15rem;
           }
         }
-
-        .subtotal-row {
-          color: #6b7280;
-          font-size: 0.95rem;
-        }
-
-        .tax-row {
-          color: #6b7280;
-          font-size: 0.95rem;
-          margin: 8px 0;
-        }
-
-        .grand-total-row {
-          margin-top: 12px;
-          font-weight: 700;
-        }
       `}</style>
+
+      <Footer />
     </>
   );
 } 
