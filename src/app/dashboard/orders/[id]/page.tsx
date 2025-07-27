@@ -344,7 +344,7 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                           {item.variantTitle && (
                             <p className="item-variant">{item.variantTitle}</p>
                           )}
-                          <div className="item-meta">
+                          <div className="item-meta d-none">
                             <span className="item-quantity">Qty: {item.quantity}</span>
                             <span className="item-unit-price">
                               <CurrencySymbol /> {formatPrice(item.price)} each
