@@ -15,6 +15,7 @@ interface Order {
   orderNumber: string;
   status: string;
   paymentStatus: string;
+  fulfillmentStatus?: string;
   totalAmount: string;
   createdAt: string;
   serviceDate?: string;
@@ -96,10 +97,60 @@ export default function DashboardPage() {
         const totalServices = orders.length;
         const totalAmount = orders.reduce((sum: number, order: Order) => 
           sum + parseFloat(order.totalAmount), 0);
+        // Active services - orders that are not completed or cancelled
         const activeServices = orders.filter((order: Order) => 
           ['pending', 'confirmed', 'processing', 'shipped'].includes(order.status)).length;
-        const completedServices = orders.filter((order: Order) => 
-          order.status === 'delivered').length;
+        
+        // Completed services - more comprehensive logic
+        const completedServices = orders.filter((order: Order) => {
+          // Consider delivered status as completed
+          if (order.status === 'delivered') return true;
+          
+          // Consider fulfilled fulfillment status as completed
+          if (order.fulfillmentStatus === 'fulfilled') return true;
+          
+          // Consider paid payment status with non-active order status as potentially completed
+          if (order.paymentStatus === 'paid' && !['pending', 'confirmed', 'processing', 'shipped'].includes(order.status)) {
+            return true;
+          }
+          
+          return false;
+        }).length;
+        
+        // Debug logging to understand the data
+        console.group('🔍 Dashboard: Order Analysis');
+        console.log('📊 Total Orders:', orders.length);
+        console.log('💰 Total Amount:', totalAmount);
+        
+        console.log('📋 Order Status Breakdown:', orders.reduce((acc, order) => {
+          acc[order.status] = (acc[order.status] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>));
+        
+        console.log('📦 Payment Status Breakdown:', orders.reduce((acc, order) => {
+          acc[order.paymentStatus] = (acc[order.paymentStatus] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>));
+        
+        console.log('✅ Fulfillment Status Breakdown:', orders.reduce((acc, order) => {
+          const fulfillmentStatus = order.fulfillmentStatus || 'unknown';
+          acc[fulfillmentStatus] = (acc[fulfillmentStatus] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>));
+        
+        console.log('🎯 Individual Orders:', orders.map(order => ({
+          id: order.id,
+          orderNumber: order.orderNumber,
+          status: order.status,
+          paymentStatus: order.paymentStatus,
+          fulfillmentStatus: order.fulfillmentStatus,
+          totalAmount: order.totalAmount
+        })));
+        
+        console.log('📈 Final Calculations:');
+        console.log('  - Active Services:', activeServices);
+        console.log('  - Completed Services:', completedServices);
+        console.groupEnd();
         
         console.log('🔍 Dashboard: Calculated stats:', {
           totalServices,

@@ -28,8 +28,8 @@ export default function AddressMap({ onAddressSelect }: AddressMapProps) {
   const [showMap, setShowMap] = useState(false);
   const [mapCenter, setMapCenter] = useState({ lat: 25.2048, lng: 55.2708 });
   const [isMapInitialized, setIsMapInitialized] = useState(false);
-  // Google Maps API Key - you'll need to set this in your environment
-  const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyBsxw1IkvR-PMohWJRSVLpc4-tbwDknHK8';
+  // Google Maps API Key - must be set in environment variables
+  const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   // Check if Google Maps is already loaded
   useEffect(() => {
@@ -277,6 +277,19 @@ export default function AddressMap({ onAddressSelect }: AddressMapProps) {
     );
   };
 
+  // Early return if API key is missing
+  if (!GOOGLE_MAPS_API_KEY) {
+    return (
+      <div className="address-map-container">
+        <div className="alert alert-warning">
+          <h5>Google Maps Configuration Required</h5>
+          <p>Google Maps API key is not configured. Please contact the administrator to set up the <code>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> environment variable.</p>
+          <p>For now, you can enter your address manually in the text field above.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Load Google Maps Script */}
@@ -284,8 +297,9 @@ export default function AddressMap({ onAddressSelect }: AddressMapProps) {
         <Script
           src={`https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`}
           onLoad={handleGoogleMapsLoad}
-          onError={() => {
-            setError('Failed to load Google Maps. Please check your internet connection.');
+          onError={(e) => {
+            console.error('Google Maps script failed to load:', e);
+            setError('Failed to load Google Maps. This could be due to: 1) Network connectivity issues, 2) Invalid API key, 3) Domain restrictions, or 4) API quotas exceeded. Please contact support if the problem persists.');
           }}
         />
       )}
