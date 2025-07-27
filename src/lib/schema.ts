@@ -326,6 +326,7 @@ export const orderItems = mysqlTable("order_items", {
   variantId: varchar("variant_id", { length: 255 }),
   productName: varchar("product_name", { length: 255 }).notNull(),
   variantTitle: varchar("variant_title", { length: 255 }),
+  variationPrice: decimal("variation_price", { precision: 10, scale: 2 }),
   sku: varchar("sku", { length: 100 }),
   quantity: int("quantity").notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),

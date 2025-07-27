@@ -101,6 +101,7 @@ export async function POST(req: Request) {
       variantTitle: Object.entries(item.selectedVariations || {})
         .map(([key, value]) => `${key}: ${value}`)
         .join(', ') || null,
+      variationPrice: item.variationPrice || 0, // Save variation price separately
       quantity: item.quantity || 1,
       price: (item.productPrice || 0).toString(),
       totalPrice: ((item.taxes?.finalAmount || item.productPrice) || 0).toString(),

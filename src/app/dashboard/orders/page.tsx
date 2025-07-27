@@ -14,6 +14,7 @@ interface Order {
   orderNumber: string;
   status: string;
   paymentStatus: string;
+  fulfillmentStatus?: string;
   totalAmount: string;
   createdAt: string;
   updatedAt: string;
@@ -77,8 +78,26 @@ export default function ServicesPage() {
           orderCount: Array.isArray(data) ? data.length : 0,
           isArray: Array.isArray(data)
         });
+        
         // Handle the new API response format (direct array instead of wrapped object)
-        setOrders(Array.isArray(data) ? data : []);
+        const ordersData = Array.isArray(data) ? data : [];
+        setOrders(ordersData);
+        
+        // Debug logging for status analysis
+        if (ordersData.length > 0) {
+          console.group('🔍 Orders Page: Status Analysis');
+          console.log('📋 Order Status Breakdown:', ordersData.reduce((acc: Record<string, number>, order: Order) => {
+            acc[order.status] = (acc[order.status] || 0) + 1;
+            return acc;
+          }, {}));
+          
+          console.log('✅ Fulfillment Status Breakdown:', ordersData.reduce((acc: Record<string, number>, order: Order) => {
+            const status = order.fulfillmentStatus || 'unknown';
+            acc[status] = (acc[status] || 0) + 1;
+            return acc;
+          }, {}));
+          console.groupEnd();
+        }
       } else {
         const errorData = await response.json();
         console.error('❌ Services: Failed to fetch orders:', errorData);
@@ -103,9 +122,21 @@ export default function ServicesPage() {
       );
     }
 
-    // Filter by status
+    // Filter by status group
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(order => order.status === statusFilter);
+      if (statusFilter === 'active') {
+        filtered = filtered.filter(order => 
+          ['pending', 'confirmed', 'processing', 'shipped'].includes(order.status)
+        );
+      } else if (statusFilter === 'completed') {
+        filtered = filtered.filter(order => {
+          const isDelivered = order.status === 'delivered';
+          const isFulfilled = order.fulfillmentStatus === 'fulfilled';
+          return isDelivered || isFulfilled;
+        });
+      } else if (statusFilter === 'cancelled') {
+        filtered = filtered.filter(order => order.status === 'cancelled');
+      }
     }
 
     setFilteredOrders(filtered);
@@ -188,14 +219,26 @@ export default function ServicesPage() {
   };
 
   const getStatusCounts = () => {
+    // Active orders - orders that are in progress
+    const activeOrders = orders.filter(order => 
+      ['pending', 'confirmed', 'processing', 'shipped'].includes(order.status)
+    );
+    
+    // Completed orders - delivered or fulfilled
+    const completedOrders = orders.filter(order => {
+      const isDelivered = order.status === 'delivered';
+      const isFulfilled = order.fulfillmentStatus === 'fulfilled';
+      return isDelivered || isFulfilled;
+    });
+    
+    // Cancelled orders
+    const cancelledOrders = orders.filter(order => order.status === 'cancelled');
+    
     const counts = {
       all: orders.length,
-      pending: orders.filter(o => o.status === 'pending').length,
-      confirmed: orders.filter(o => o.status === 'confirmed').length,
-      processing: orders.filter(o => o.status === 'processing').length,
-      shipped: orders.filter(o => o.status === 'shipped').length,
-      delivered: orders.filter(o => o.status === 'delivered').length,
-      cancelled: orders.filter(o => o.status === 'cancelled').length,
+      active: activeOrders.length,
+      completed: completedOrders.length,
+      cancelled: cancelledOrders.length,
     };
     return counts;
   };
@@ -233,15 +276,15 @@ export default function ServicesPage() {
               </div>
               <div className="header-stats">
                 <div className="stat-item">
-                  <span className="stat-number">{orders.length}</span>
+                  <span className="stat-number">{statusCounts.all}</span>
                   <span className="stat-label">Total Services</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-number">{statusCounts.pending + statusCounts.confirmed + statusCounts.processing + statusCounts.shipped}</span>
+                  <span className="stat-number">{statusCounts.active}</span>
                   <span className="stat-label">Active</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-number">{statusCounts.delivered}</span>
+                  <span className="stat-number">{statusCounts.completed}</span>
                   <span className="stat-label">Completed</span>
                 </div>
               </div>
@@ -265,11 +308,8 @@ export default function ServicesPage() {
               <div className="status-filters">
                 {[
                   { key: 'all', label: 'All', count: statusCounts.all },
-                  { key: 'pending', label: 'Pending', count: statusCounts.pending },
-                  { key: 'confirmed', label: 'Confirmed', count: statusCounts.confirmed },
-                  { key: 'processing', label: 'Processing', count: statusCounts.processing },
-                  { key: 'shipped', label: 'Shipped', count: statusCounts.shipped },
-                  { key: 'delivered', label: 'Delivered', count: statusCounts.delivered },
+                  { key: 'active', label: 'Active', count: statusCounts.active },
+                  { key: 'completed', label: 'Completed', count: statusCounts.completed },
                   { key: 'cancelled', label: 'Cancelled', count: statusCounts.cancelled },
                 ].map((filter) => (
                   <button

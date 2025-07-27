@@ -13,6 +13,7 @@ interface OrderItem {
   id: string;
   productName: string;
   variantTitle?: string;
+  variationPrice?: string;
   quantity: number;
   price: string;
   totalPrice: string;
@@ -86,6 +87,25 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
       if (response.ok) {
         const data = await response.json();
         console.log('🔍 Order Details: Order data received:', data);
+        
+        // Debug addon and variation price data
+        if (data.order && data.order.items) {
+          console.group('🔍 Order Details: Item Analysis');
+          data.order.items.forEach((item: any, index: number) => {
+            console.log(`Item ${index + 1} (${item.productName}):`, {
+              hasAddons: !!item.addons,
+              addonsType: typeof item.addons,
+              addonsValue: item.addons,
+              addonsIsArray: Array.isArray(item.addons),
+              addonsLength: Array.isArray(item.addons) ? item.addons.length : 'N/A',
+              variationPrice: item.variationPrice,
+              hasVariationPrice: !!item.variationPrice,
+              variationPriceValue: parseFloat(item.variationPrice || '0')
+            });
+          });
+          console.groupEnd();
+        }
+        
         setOrder(data.order);
       } else {
         const errorData = await response.json();
@@ -330,18 +350,73 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
                               <CurrencySymbol /> {formatPrice(item.price)} each
                             </span>
                           </div>
-                          {item.addons && Array.isArray(item.addons) && item.addons.length > 0 && (
-                            <div className="item-addons">
-                              <h4>Add-ons:</h4>
-                              {item.addons.map((addon: any, index: number) => (
-                                <div key={index} className="addon-item">
-                                  <span>{addon.title || addon.name || `Addon ${index + 1}`}</span>
-                                  <span>Qty: {addon.quantity || 1}</span>
-                                  <span><CurrencySymbol /> {formatPrice(addon.price || '0')}</span>
-                                </div>
-                              ))}
+                          
+                          {/* Show variation price separately if it exists */}
+                          {item.variationPrice && parseFloat(item.variationPrice) > 0 && (
+                            <div className="item-variation-price">
+                              <span className="variation-label">Variation Price:</span>
+                              <span className="variation-amount">
+                                <CurrencySymbol /> {formatPrice(item.variationPrice)}
+                              </span>
                             </div>
                           )}
+                          {(() => {
+                            // Handle different addon data structures
+                            let addonsToRender = null;
+                            
+                            if (item.addons) {
+                              if (Array.isArray(item.addons)) {
+                                addonsToRender = item.addons;
+                              } else if (typeof item.addons === 'string') {
+                                try {
+                                  const parsed = JSON.parse(item.addons);
+                                  addonsToRender = Array.isArray(parsed) ? parsed : null;
+                                } catch (e) {
+                                  console.warn('Failed to parse addons JSON:', item.addons);
+                                }
+                              } else if (typeof item.addons === 'object' && item.addons !== null) {
+                                // If it's an object, try to convert to array
+                                addonsToRender = Object.values(item.addons);
+                              }
+                            }
+                            
+                            // Debug logging for troubleshooting
+                            if (item.addons) {
+                              console.log(`Addon data for ${item.productName}:`, {
+                                original: item.addons,
+                                type: typeof item.addons,
+                                isArray: Array.isArray(item.addons),
+                                processed: addonsToRender,
+                                willRender: !!(addonsToRender && addonsToRender.length > 0)
+                              });
+                            }
+                            
+                            return addonsToRender && addonsToRender.length > 0 ? (
+                              <div className="item-addons">
+                                <h4>Add-ons:</h4>
+                                {addonsToRender.map((addon: any, index: number) => (
+                                  <div key={index} className="addon-item">
+                                    <span className="addon-name">
+                                      {addon.title || addon.name || addon.productName || `Addon ${index + 1}`}
+                                      {addon.groupTitle && <small className="addon-group"> ({addon.groupTitle})</small>}
+                                    </span>
+                                    <span className="addon-quantity">Qty: {addon.quantity || 1}</span>
+                                    <span className="addon-price">
+                                      <CurrencySymbol /> {formatPrice(addon.price || addon.totalPrice || '0')}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : item.addons ? (
+                              // Fallback: show raw addon data if structure is unexpected
+                              <div className="item-addons">
+                                <h4>Add-ons (Debug):</h4>
+                                <pre style={{ fontSize: '12px', background: '#f5f5f5', padding: '8px', borderRadius: '4px' }}>
+                                  {JSON.stringify(item.addons, null, 2)}
+                                </pre>
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                         <div className="item-total">
                           <CurrencySymbol /> {formatPrice(item.totalPrice)}
@@ -620,6 +695,28 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
           margin-bottom: 12px;
         }
 
+        .item-variation-price {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 0.875rem;
+          margin-bottom: 8px;
+          padding: 6px 12px;
+          background: #f0f9ff;
+          border-radius: 6px;
+          border-left: 3px solid #0ea5e9;
+        }
+
+        .variation-label {
+          color: #0369a1;
+          font-weight: 500;
+        }
+
+        .variation-amount {
+          color: #0369a1;
+          font-weight: 600;
+        }
+
         .item-addons {
           margin-top: 12px;
           padding-top: 12px;
@@ -637,9 +734,37 @@ export default function OrderDetailsPage({ params }: { params: Promise<{ id: str
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 4px 0;
+          padding: 6px 0;
           font-size: 0.875rem;
           color: #6b7280;
+          border-bottom: 1px solid #f3f4f6;
+        }
+
+        .addon-item:last-child {
+          border-bottom: none;
+        }
+
+        .addon-name {
+          flex: 1;
+          font-weight: 500;
+          color: #374151;
+        }
+
+        .addon-group {
+          color: #9ca3af;
+          font-weight: normal;
+        }
+
+        .addon-quantity {
+          min-width: 60px;
+          text-align: center;
+        }
+
+        .addon-price {
+          min-width: 80px;
+          text-align: right;
+          font-weight: 600;
+          color: #1f2937;
         }
 
         .item-total {

@@ -2,6 +2,7 @@ export interface CartItem {
   productId: string;
   productTitle: string;
   productPrice: number;
+  variationPrice?: number; // Additional price from variations
   quantity: number;
   selectedVariations?: Record<string, string>;
   selectedAddons?: Array<{

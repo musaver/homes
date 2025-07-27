@@ -851,6 +851,7 @@ export default function ProjectDetailsPage() {
         productId: product.id,
         productTitle: product.name,
         productPrice: currentPrice,
+        variationPrice: variationPrice, // Store variation price separately
         quantity: 1,
         selectedVariations: selectedVariations,
         selectedAddons: selectedAddons,
