@@ -547,7 +547,7 @@ export default function CheckoutPage() {
                       <h6 className="text-muted mb-2">Service Schedule</h6>
                       <div className="schedule-info">
                         <div className="schedule-item">
-                          <i className="fas fa-calendar me-2 text-primary"></i>
+                          <i className="fas fa-calendar me-2"></i>
                           <span>{new Date(serviceDate).toLocaleDateString('en-US', { 
                             weekday: 'long', 
                             year: 'numeric', 
@@ -556,7 +556,7 @@ export default function CheckoutPage() {
                           })}</span>
                         </div>
                         <div className="schedule-item">
-                          <i className="fas fa-clock me-2 text-primary"></i>
+                          <i className="fas fa-clock me-2"></i>
                           <span>{(() => {
                             const [hours, minutes] = serviceTime.split(':');
                             const hour12 = parseInt(hours) > 12 ? parseInt(hours) - 12 : parseInt(hours);
@@ -565,7 +565,6 @@ export default function CheckoutPage() {
                           })()}</span>
                         </div>
                       </div>
-                      <hr className="summary-divider" />
                     </div>
                   )}
                   
@@ -770,6 +769,7 @@ export default function CheckoutPage() {
           display: flex;
           flex-direction: column;
           gap: 0.5rem;
+          align-items: normal;
         }
 
         .schedule-item {
