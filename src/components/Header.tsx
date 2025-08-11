@@ -228,7 +228,7 @@ export default function Header() {
                         </p>
                       </div>
                     </div>
-                    <Link href="/contact" className="th-btn star-btn">Get A Quote</Link>
+                    <Link href="/contact" className="th-btn star-btn d-xl-block d-lg-block d-md-block d-sm-block d-none">Get A Quote</Link>
                     
                     {/* User Icon */}
                     <div className="user-dropdown-container">

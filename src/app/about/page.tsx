@@ -11,7 +11,7 @@ export default function About() {
       <Header />
 
       {/* Breadcrumb Area */}
-      <div className="breadcumb-wrapper background-image shape-mockup-wrap" style={{backgroundImage: 'url(/assets/img/bg/breadcrumb-bg.jpg)'}}>
+      <div className="breadcumb-wrapper background-image shape-mockup-wrap" style={{backgroundImage: 'url(/assets/images/new/about-us-cover.jpg)'}}>
           <div className="breadcrumb-bottom-shape"><Image src="/assets/img/bg/breadcrumb-bottom.png" alt="shape" width={100} height={100}/></div>
           <div className="shape-mockup breadcrumb-left jump-reverse"><Image src="/assets/img/icon/breadcrumb-left.png" alt="shape" width={100} height={100}/></div>
           <div className="shape-mockup breadcrumb-right jump"><Image src="/assets/img/icon/breadcrumb-right.png" alt="shape" width={100} height={100}/></div>
@@ -26,29 +26,58 @@ export default function About() {
           </div>
       </div>
 
-      <AboutPage />
+         <div className="overflow-hidden space-bottom" id="about-sec" style={{padding: '30px 0px'}}>
+            <div className="container">
+              <div className="row gy-30 align-items-center">
+                <div className="col-xl-7 mb-xl-0">
+                  <div className="img-box1">
+                    <div className="img2">
+                      <Image 
+                        className="tilt-active" 
+                        src="/assets/images/new/633x470.jpg" 
+                        alt="Image" 
+                        width={550} 
+                        height={500} 
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="col-xl-5">
+                  <div className="title-area">
+                    <span className="sub-title before-none">About Us</span>
+                    <h2 className="sec-title">One Company. Every Solution for Your Home</h2>
+                    <p className="sec-text"> We are a trusted home repair and maintenance service provider offering expert solutions for AC servicing, handyman work, plumbing, electrical, appliance repair, home painting, and renovation. Our mission is to simplify home upkeep with prompt, affordable, and high-quality service.</p>
+                    <p className="sec-text">Whether it&apos;s a small fix, an urgent repair, or a complete home transformation, our skilled team brings years of experience and dedication to every job. We focus on customer satisfaction, professionalism, and attention to detail, ensuring that your home is in safe hands from start to finish.</p>
+                  </div>
+                  <div>
+                    <Link href="#!" className="th-btn star-btn">Discover More</Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
      
       <div className="counter-sec1 space-bottom">
         <div className="container">
             <div className="counter-card-wrap space">
                 <div className="counter-card">
                     <div className="media-body">
-                        <h2 className="box-number"><span className="counter-number">16</span>+</h2>
-                        <p className="box-text">Satisfied Our Customers</p>
+                        <h2 className="box-number"><span className="counter-number">10</span>+</h2>
+                        <p className="box-text">Years Serving Our Customers</p>
                     </div>
                 </div>
                 <div className="right-shape"><Image src="/assets/img/icon/counter-shape-1-1.png" alt="Shape" width={70} height={70}/></div>
                 <div className="counter-card">
                     <div className="media-body">
-                        <h2 className="box-number"><span className="counter-number">180</span>+</h2>
-                        <p className="box-text">Cleaning Expert Members</p>
+                        <h2 className="box-number"><span className="counter-number">50</span>+</h2>
+                        <p className="box-text"> Skilled Service Experts</p>
                     </div>
                 </div>
                 <div className="right-shape"><Image src="/assets/img/icon/counter-shape-1-1.png" alt="Shape" width={70} height={70}/></div>
                 <div className="counter-card">
                     <div className="media-body">
-                        <h2 className="box-number"><span className="counter-number">120</span>+</h2>
-                        <p className="box-text">Company Award Winner</p>
+                        <h2 className="box-number"><span className="counter-number">900</span>+</h2>
+                        <p className="box-text">Satisfied Clients</p>
                     </div>
                 </div>
                 <div className="right-shape"><Image src="/assets/img/icon/counter-shape-1-1.png" alt="Shape" width={70} height={70}/></div>
@@ -58,43 +87,43 @@ export default function About() {
 
     <section className="space background-image shape-mockup-wrap" id="process-sec" style={{backgroundImage: 'url(/assets/img/bg/team-bg-1.jpg)'}}>
         <div className="shape-mockup jump process-3-shape-1"><Image src="/assets/img/shape/team-sahpe-1-1.svg" alt="shape" width={100} height={100}/></div>
-        <div className="shape-mockup jump d-lg-block d-none" style={{top: '100px', right: '180px'}}><Image src="/assets/img/shape/servicce-2-shape-theme2.svg" alt="shape" width={100} height={100}/></div>
-        <div className="shape-mockup jump-reverse d-xl-block d-none" style={{bottom: '100px', left: '50px'}}><Image src="/assets/img/shape/servicce-2-shape-theme2.svg" alt="shape" width={100} height={100}/></div>
+        <div className="shape-mockup jump d-lg-block d-none" style={{top: '100px', right: '180px'}}><Image src="/assets/img/shape/servicce-2-shape-theme2.svg" alt="shape" width={100} height={100} style={{filter:'brightness(0) invert(1)'}}  /></div>
+        <div className="shape-mockup jump-reverse d-xl-block d-none" style={{bottom: '100px', left: '50px'}}><Image src="/assets/img/shape/servicce-2-shape-theme2.svg" alt="shape" width={100} height={100} style={{filter:'brightness(0) invert(1)'}} /></div>
         <div className="shape-mockup jump-reverse process-3-shape-4"><Image src="/assets/img/shape/team-sahpe-1-1.svg" alt="shape" width={100} height={100}/></div>
         <div className="container">
             <div className="row">
                 <div className="col-lg-12 text-center text-xl-start">
-                    <div className="title-area"><span className="sub-title before-none style-theme2 lg-after-none justify-content-center justify-content-xl-start">Work Process</span>
+                    <div className="title-area"><span className="sub-title before-none style-theme2 lg-after-none justify-content-center justify-content-xl-start text-white">Work Process</span>
                         <h2 className="sec-title text-white">How We Are Working!</h2></div>
                 </div>
             </div>
             <div className="row gy-4 justify-content-center">
                 <div className="col-xl-3 col-md-6 process-box-wrap">
                     <div className="process-box style-3">
-                        <div className="box-icon"><i className="fa-solid fa-address-card"></i></div>
+                        <div className="box-icon bg-transparent"><i className="fa-solid fa-address-card text-white"></i></div>
                         <h3 className="box-title text-white">Application</h3>
-                        <p className="box-text text-white">These services range from regular housekeeping tasks to deep cleaning, sanitation, &amp; cleaning services.</p>
+                        <p className="box-text text-white">Tell us your repair or maintenance needs through our quick and easy booking process</p>
                     </div>
                 </div>
                 <div className="col-xl-3 col-md-6 process-box-wrap">
                     <div className="process-box style-3">
-                        <div className="box-icon"><i className="fa-regular fa-calendar-clock"></i></div>
-                        <h3 className="box-title text-white">The Date</h3>
-                        <p className="box-text text-white">These services range from regular housekeeping tasks to deep cleaning, sanitation, &amp; cleaning services.</p>
+                        <div className="box-icon bg-transparent"><i className="fa-regular fa-calendar-clock text-white"></i></div>
+                        <h3 className="box-title text-white">Schedule the Date</h3>
+                        <p className="box-text text-white">Choose a time that works for you we work around your schedule.</p>
                     </div>
                 </div>
                 <div className="col-xl-3 col-md-6 process-box-wrap">
                     <div className="process-box style-3">
-                        <div className="box-icon"><i className="fa-sharp fa-solid fa-handshake"></i></div>
+                        <div className="box-icon bg-transparent"><i className="fa-sharp fa-solid fa-handshake text-white"></i></div>
                         <h3 className="box-title text-white">Hire Us</h3>
-                        <p className="box-text text-white">These services range from regular housekeeping tasks to deep cleaning, sanitation, &amp; cleaning services.</p>
+                        <p className="box-text text-white">Our expert team arrives on time, equipped with the right tools and materials for the job.</p>
                     </div>
                 </div>
                 <div className="col-xl-3 col-md-6 process-box-wrap">
                     <div className="process-box style-3">
-                        <div className="box-icon"><i className="fa-solid fa-broom"></i></div>
-                        <h3 className="box-title text-white">Cleaning</h3>
-                        <p className="box-text text-white">These services range from regular housekeeping tasks to deep cleaning, sanitation, &amp; cleaning services.</p>
+                        <div className="box-icon bg-transparent"><i className="fa-solid fa-broom text-white"></i></div>
+                        <h3 className="box-title text-white">Service Completion</h3>
+                        <p className="box-text text-white">We complete the work professionally, ensure quality, and leave your space neat and functional.</p>
                     </div>
                 </div>
             </div>
@@ -109,19 +138,14 @@ export default function About() {
             <div className="row gy-50 align-items-center">
                 <div className="col-xl-6">
                     <div className="why-2-left shape-mockup-wrap">
-                        <div className="shape-mockup moving why-2-left-shape-1"><Image src="/assets/img/shape/services-shape-1-1.svg" alt="shape" width={100} height={100}/></div>
-                        <div className="shape-mockup jump why-2-left-shape-2"><Image src="/assets/img/shape/why-2-shape.svg" alt="shape" width={100} height={100}/></div>
-                        <div className="smoke-bg"></div>
-                        <div className="theme-bg"></div>
-                        <div className="theme2-bg"></div>
-                        <div className="img2"><Image src="/assets/img/why/why-choose-2-left.png" alt="Image" width={500} height={500}/></div>
+                        <div className="img2"><Image src="/assets/images/645x600.jpg" alt="Image" width={500} height={500} style={{borderRadius:'20px'}}/></div>
                     </div>
                 </div>
                 <div className="col-xl-6">
                     <div className="why-2-right">
                         <div className="title-area"><span className="sub-title after-none">Why choose us</span>
-                            <h2 className="sec-title">Making Homes Spotless One Sweep at a Time</h2>
-                            <p className="sec-text">House cleaning services are professional services designed to clean and maintain residential spaces. They provide convenience and ensure a hygienic living environment for homeowners, often offering various packages tailored to different needs and preferences.</p>
+                            <h2 className="sec-title">Reliable Repairs & Maintenance You Can Trust</h2>
+                            <p className="sec-text">We deliver professional home services that keep your property in top condition. From AC repairs to plumbing, painting, and electrical work, we make home care stress-free and dependable.</p>
                         </div>
                     </div>
                     <div className="why-2-right-bottom-wrapper shape-mockup-wrap">

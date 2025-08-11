@@ -8,18 +8,12 @@ export default function About() {
         <div className="row gy-30 align-items-center">
           <div className="col-xl-7 mb-xl-0">
             <div className="img-box1">
-              <div className="img1 jump-reverse">
-                <Image src="/assets/images/about-1-left.jpg" alt="About" width={300} height={400} />
-              </div>
-              <div className="shape1 jump">
-                <Image src="/assets/images/about-1-right.jpg" alt="Image" width={200} height={300} />
-              </div>
               <div className="img2">
                 <Image 
                   className="tilt-active" 
-                  src="/assets/images/about-1-main.jpg" 
+                  src="/assets/images/new/645x600.jpg" 
                   alt="Image" 
-                  width={400} 
+                  width={550} 
                   height={500} 
                 />
               </div>
@@ -30,7 +24,7 @@ export default function About() {
               <span className="sub-title before-none">About Us</span>
               <h2 className="sec-title">One Company. Every Solution for Your Home</h2>
               <p className="sec-text">
-                We are a trusted home services provider offering expert solutions for AC cleaning, handyman work, plumbing, electrical, appliance repair, home painting, and renovation. Our mission is to simplify home maintenance with prompt, affordable, and high-quality service. Whether it&apos;s a small fix or a complete home transformation, our skilled team brings years of experience and dedication to every job. We focus on customer satisfaction, professionalism, and attention to detail, ensuring that your home is in safe hands from start to finish.
+                 We are a trusted home repair and maintenance service provider offering expert solutions for AC servicing, handyman work, plumbing, electrical, appliance repair, painting, and renovation. Our mission is to simplify home upkeep with prompt, affordable, and high-quality service. Whether it&apos;s a minor repair or a complete home transformation, our skilled team brings years of experience and dedication to every job. We focus on customer satisfaction, professionalism, and attention to detail, ensuring that your home is in safe hands from start to finish.
               </p>
             </div>
             <div>

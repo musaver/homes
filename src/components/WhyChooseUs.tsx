@@ -35,8 +35,7 @@ export default function WhyChooseUs() {
           <div className="col-xl-6 col-lg-6 col-md-8 d-none d-xl-block">
             <div className="about-3-right-content">
               <p className="text-white">
-                We deliver expert home services with a focus on quality, reliability, and customer satisfaction. 
-                From booking to project completion — we make home maintenance simple.
+                We deliver expert home repair and maintenance solutions with a focus on quality, reliability, and customer satisfaction. From booking to project completion we make home care simple.
               </p>
             </div>
           </div>
@@ -66,9 +65,9 @@ export default function WhyChooseUs() {
                 <div className="media-body">
                   <h2 className="box-number">
                     <span className="number">
-                      <span className="counter-number">150</span>
+                      <span className="counter-number">900</span>
                     </span>
-                    <span className="plus">+</span>
+                    <span className="plus" style={{color:'var(--theme-color3)'}}>+</span>
                   </h2>
                   <p className="box-text text-white">Satisfied Clients</p>
                 </div>
@@ -80,9 +79,9 @@ export default function WhyChooseUs() {
                 <div className="media-body">
                   <h2 className="box-number">
                     <span className="number">
-                      <span className="counter-number">25</span>
+                      <span className="counter-number">50</span>
                     </span>
-                    <span className="plus">+</span>
+                    <span className="plus" style={{color: 'var(--theme-color3)'}}>+</span>
                   </h2>
                   <p className="box-text text-white">Skilled Professionals</p>
                 </div>
@@ -105,7 +104,7 @@ export default function WhyChooseUs() {
           </div>
           <div className="col-xl-6 mb-30 mb-xl-0">
             <div className="img-box about-3">
-              <Image src="/assets/images/about_3_1.jpg" alt="About-img" width={600} height={400} />
+              <Image src="/assets/images/new/633x470.jpg" alt="About-img" width={600} height={500} />
             </div>
           </div>
         </div>
@@ -114,13 +113,14 @@ export default function WhyChooseUs() {
           <div className="col-xl-3 col-lg-3 col-md-6 col-12 about-bottom__box-wrap">
             <div className="about-sec-3-bottom">
               <div className="about-bottom__box">
-                <div className="about-bottom__icon">
-                  <i className="fa-light fa-clock-one"></i>
+                <div className="about-bottom__icon" style={{background:'var(--theme-color2)'}}>
+                  {/* <i className="fas fa-hard-hat"></i> */}
+                  <Image src={'/assets/images/iconss/40X40-1.png'} width={40} height={40}  alt='' style={{marginTop:'-0.5rem'}}/>
                 </div>
                 <div className="about-bottom__content">
                   <h3 className="about-bottom__box-title">Certified Expert Workers</h3>
                   <p className="about-bottom__box-text text-white">
-                    Modern cleaning tools such as vacuum cleaners, steam cleaners, microfiber
+                    Skilled technicians with years of hands-on experience
                   </p>
                 </div>
               </div>
@@ -130,12 +130,12 @@ export default function WhyChooseUs() {
             <div className="about-sec-3-bottom">
               <div className="about-bottom__box">
                 <div className="about-bottom__icon">
-                  <i className="fa-light fa-clock-one"></i>
+                  <Image src={'/assets/images/iconss/40X40-2.png'} width={40} height={40}  alt='' style={{marginTop:'-0.5rem'}}/>
                 </div>
                 <div className="about-bottom__content">
                   <h3 className="about-bottom__box-title">Fast and Quality Services</h3>
                   <p className="about-bottom__box-text text-white">
-                    Modern cleaning tools such as vacuum cleaners, steam cleaners, microfiber
+                    Timely, efficient, and precise work for every job.
                   </p>
                 </div>
               </div>
@@ -145,12 +145,12 @@ export default function WhyChooseUs() {
             <div className="about-sec-3-bottom">
               <div className="about-bottom__box">
                 <div className="about-bottom__icon">
-                  <i className="fa-sharp fa-light fa-calendar-clock"></i>
+                  <Image src={'/assets/images/iconss/40X40-3.png'} width={40} height={40}  alt='' style={{marginTop:'-0.5rem'}}/>
                 </div>
                 <div className="about-bottom__content">
                   <h3 className="about-bottom__box-title">Best Prices in Town</h3>
                   <p className="about-bottom__box-text text-white">
-                    Modern cleaning tools such as vacuum cleaners, steam cleaners, microfiber
+                    Affordable rates without compromising on quality.
                   </p>
                 </div>
               </div>
@@ -159,13 +159,13 @@ export default function WhyChooseUs() {
           <div className="col-xl-3 col-lg-3 col-md-6 col-12 about-bottom__box-wrap">
             <div className="about-sec-3-bottom">
               <div className="about-bottom__box">
-                <div className="about-bottom__icon">
-                  <i className="fa-sharp fa-light fa-calendar-clock"></i>
+                <div className="about-bottom__icon" style={{background: 'var(--theme-color2)'}}>
+                  <Image src={'/assets/images/iconss/40X40-4.png'} width={40} height={40}  alt='' style={{marginTop:'-0.5rem'}}/>
                 </div>
                 <div className="about-bottom__content">
                   <h3 className="about-bottom__box-title">We Have Won Awards</h3>
                   <p className="about-bottom__box-text text-white">
-                    Modern cleaning tools such as vacuum cleaners, steam cleaners, microfiber
+                    Recognized for excellence in home repair and maintenance.
                   </p>
                 </div>
               </div>

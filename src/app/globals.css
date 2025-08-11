@@ -308,3 +308,29 @@ a {
   box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.2);
 }
 
+@media only screen and (max-width: 600px) {
+  .detailService .slider-arrow.slider-prev {
+    right: 10px;
+    left: inherit;
+    top: -28px;
+}
+.detailService .slider-arrow.slider-next
+ {
+    right: 7px;
+    top: -28px;
+}
+}
+
+.newdetailservice .swiper-slide {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.newdetailservice .service-card {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}

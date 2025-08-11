@@ -113,10 +113,11 @@ export default function Contact() {
           </div>
           <div className="col-md-6">
             <Image
-              src="/assets/images/645x600.jpg"
+              src="/assets/images/new/CONTACT-US.jpg"
               alt="Contact"
               width={645}
               height={600}
+              style={{borderRadius:'20px'}}
             />
           </div>
         </div>
