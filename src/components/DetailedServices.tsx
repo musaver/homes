@@ -232,7 +232,7 @@ export default function DetailedServices() {
 
   if (loading) {
     return (
-      <section className="space" style={{padding: '30px 0px'}}>
+      <section className="space detailService" style={{padding: '30px 0px'}}>
         <div className="container">
           <div className="row justify-content-center">
             <div className="col-xxl-6 col-xl-7 col-lg-7 col-md-8">
@@ -257,7 +257,7 @@ export default function DetailedServices() {
 
   if (error) {
     return (
-      <section className="space" style={{padding: '30px 0px'}}>
+      <section className="space detailService" style={{padding: '30px 0px'}}>
         <div className="container">
           <div className="row justify-content-center">
             <div className="col-xxl-6 col-xl-7 col-lg-7 col-md-8">
@@ -284,7 +284,7 @@ export default function DetailedServices() {
   }
 
   return (
-    <section className="space" style={{padding: '30px 0px'}}>
+    <section className="space detailService" style={{padding: '30px 0px'}}>
       <div className="shape-mockup moving th-service-1__shape-1">
         <Image src="/assets/img/shape/services-shape-1-1.svg" alt="shape" width={50} height={50} />
       </div>
@@ -317,7 +317,7 @@ export default function DetailedServices() {
               <div 
                 className="swiper th-slider" 
                 id="service-slider1"
-                data-slider-options='{"breakpoints":{"0":{"slidesPerView":1},"576":{"slidesPerView":"1"},"768":{"slidesPerView":"2"},"992":{"slidesPerView":"2"},"1200":{"slidesPerView":"3"}}}'
+                data-slider-options='{"breakpoints":{"0":{"slidesPerView":1},"576":{"slidesPerView":"1.5"},"768":{"slidesPerView":"2"},"992":{"slidesPerView":"2"},"1200":{"slidesPerView":"3"}}}'
               >
                 <div className="swiper-wrapper">
                   {products.map((product, index) => (

@@ -34,10 +34,10 @@ export default function Hero() {
 
         <div className="hero-style3">
           <h1 className="hero-title">
-            Your Trusted Partner for <span>Home Repairs &amp; Renovation</span>
+            Your Trusted Partner for <span>Home Repairs &amp; Maintenance</span>
           </h1>
           <p className="hero-text">
-            Get expert help for AC cleaning, plumbing, painting, appliance repair, and more — all at your doorstep.
+            Get expert help for AC servicing, plumbing, painting, appliance repair, electrical work, and more — all at your doorstep.
           </p>
           <div className="btn-group justify-content-center">
             <Link href="#!" className="th-btn star-btn btn-bg-theme-3">

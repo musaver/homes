@@ -15,22 +15,22 @@ const processSteps = [
   {
     icon: 'fa-solid fa-calendar-check',
     title: 'Book Online',
-    description: 'Book your service online at your convenience fast response, flexible slots.'
+    description: 'Schedule your service at your convenience'
   },
   {
     icon: 'fa-solid fa-file-invoice-dollar',
     title: 'Get a Detailed Estimate',
-    description: 'Honest assessment, upfront quote, and no hidden charges just clear, fair pricing.'
+    description: 'Transparent pricing with no hidden charges.'
   },
   {
     icon: 'fa-solid fa-project-diagram',
     title: 'Work Planning',
-    description: 'We plan efficiently with you to minimize disruption your   time matters'
+    description: 'Organized execution with minimal disruption.'
   },
   {
     icon: 'fa-solid fa-truck-fast',
     title: 'Service Delivered',
-    description: 'Punctual, professional, and clean — we ensure your satisfaction with guaranteed quality.'
+    description: 'Professional, punctual, and clean work every time.'
   }
 ]
 

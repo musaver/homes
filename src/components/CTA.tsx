@@ -44,13 +44,12 @@ export default function CTA() {
             <div className="col-xl-9 col-lg-10">
               <div className="cta-box4">
                 <div className="title-area text-center">
-                  <h2 className="box-title text-white">Trusted Home Cleaning Solutions</h2>
+                  <h2 className="box-title text-white">Trusted Home Repair & Maintenance Solutions</h2>
                   <p className="box-text text-white">
-                    At Quick Repair Home, we offer professional residential cleaning services designed to keep your home spotless, hygienic, and beautifully maintained. Take advantage of our exclusive limited-time discounts and let our expert team bring freshness and comfort back to your living space.
+                     At Quick Repairs Home, we provide reliable, professional, and comprehensive home maintenance services designed to keep your property in excellent condition. From AC repairs to electrical fixes, painting, and plumbing — we ensure your home stays functional, safe, and beautiful.
                   </p>
                 </div>
                 <div className="button-wrap d-flex gap-4 justify-content-center flex-wrap">
-                  <Link href="#!" className="th-btn star-btn btn-bg-theme-3">Work With Us</Link>
                   <Link href="#!" className="th-btn star-btn btn-bg-theme-2">Contact Us</Link>
                 </div>
               </div>
