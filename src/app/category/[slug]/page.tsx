@@ -359,7 +359,7 @@ export default function CategoryPage() {
         /* Better positioning for breadcrumb bottom shape */
         .breadcrumb-bottom-shape {
           position: absolute;
-          bottom: -3px;
+          bottom: -6px;
           left: 0;
           right: 0;
           z-index: 3;

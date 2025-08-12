@@ -920,18 +920,10 @@ export default function ProjectDetailsPage() {
     <>
 <Header />
       {/* Breadcrumb Area */}
-      <div className="breadcumb-wrapper background-image shape-mockup-wrap" style={{backgroundImage: 'url(/assets/img/bg/breadcrumb-bg.jpg)'}}>
-          <div className="breadcrumb-bottom-shape"><Image src="/assets/img/bg/breadcrumb-bottom.png" alt="shape" width={100} height={100}/></div>
-          <div className="shape-mockup breadcrumb-left jump-reverse"><Image src="/assets/img/icon/breadcrumb-left.png" alt="shape" width={100} height={100}/></div>
-          <div className="shape-mockup breadcrumb-right jump"><Image src="/assets/img/icon/breadcrumb-right.png" alt="shape" width={100} height={100}/></div>
+      <div className="mt-40" >
           <div className="container">
               <div className="breadcumb-content">
-                  <h1 className="breadcumb-title">{product.name} </h1>
-                  <ul className="breadcumb-menu">
-                      <li><Link href="/">Home</Link></li>
-                      <li><Link href="/all-categories">Categories</Link></li>
-                      <li>{product.name}</li>
-                  </ul>
+                  <h1 className="">{product.name} </h1>
               </div>
           </div>
       </div>
@@ -941,7 +933,7 @@ export default function ProjectDetailsPage() {
 
       
 
-        <section className="space-top space-extra2-bottom">
+        <section className="space-extra2-bottom mt-30">
             <div className="container">
                 <div className="row">
                     <div className="col-xxl-8 col-lg-8">
@@ -952,7 +944,7 @@ export default function ProjectDetailsPage() {
                               alt={product.name} 
                               width={1000} 
                               height={200} 
-                              style={{height: '270px'}}
+                              style={{height: ''}}
                               className="w-100" />
                             </div>
                             <div className="page-content">
