@@ -84,45 +84,61 @@ export async function POST(req: Request) {
       additionalNotes ? `Additional Notes: ${additionalNotes}` : '',
     ].filter(note => note).join('\n');
 
-    await db.insert(orders).values({
+    const orderData = {
       id: consultationId,
       orderNumber,
       userId: session?.user?.id || null,
       email: emailAddress,
-      phone: phoneNumber,
-      status: 'consultation_pending', // Special status for consultations
-      paymentStatus: 'not_applicable', // Consultations are free
-      subtotal: 0, // Free consultation
-      taxAmount: '0,0',
-      totalAmount: 0,
+      phone: phoneNumber || '',
+      status: 'consultation_pending' as const, // Special status for consultations
+      paymentStatus: 'not_applicable' as const, // Consultations are free
+      subtotal: '0.00', // Free consultation (as string for decimal field)
+      taxAmount: '0.00,0.00',
+      totalAmount: '0.00', // Free consultation (as string for decimal field)
       shippingAddress1: 'N/A - Consultation Only',
+      shippingAddress2: null,
       shippingCity: null,
       shippingState: null,
       shippingPostalCode: null,
       shippingCountry: 'UAE',
       notes: consultationNotes,
-      serviceDate: consultationDate,
-      serviceTime: consultationTime,
+      serviceDate: consultationDate || '',
+      serviceTime: consultationTime || '',
       createdAt: new Date(),
       updatedAt: new Date(),
-    });
+    };
+
+    await db.insert(orders).values(orderData);
 
     // Send consultation confirmation email
     try {
-      const emailData = {
+      await sendOrderConfirmationEmail(
+        emailAddress,
         orderNumber,
-        userName: fullName,
-        userEmail: emailAddress,
-        phone: phoneNumber,
-        serviceDate: consultationDate,
-        serviceTime: consultationTime,
-        serviceType: serviceType,
-        productName,
-        additionalNotes: additionalNotes || 'None',
-        isConsultation: true
-      };
-
-      await sendOrderConfirmationEmail(emailData);
+        fullName,
+        {
+          subtotal: 0,
+          vatAmount: 0,
+          serviceAmount: 0,
+          total: 0,
+        },
+        [{
+          productName: `${productName} - Consultation`,
+          quantity: 1,
+          price: 0,
+          variations: `Service Type: ${serviceType}`,
+          addons: '',
+          taxes: {
+            vatAmount: 0,
+            serviceAmount: 0,
+            totalTaxAmount: 0,
+            finalAmount: 0,
+          },
+        }],
+        consultationDate,
+        consultationTime,
+        additionalNotes || 'Free consultation booking'
+      );
       console.log('✅ Consultation confirmation email sent successfully');
     } catch (emailError) {
       console.error('❌ Failed to send consultation confirmation email:', emailError);
