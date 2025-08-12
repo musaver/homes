@@ -62,7 +62,7 @@ export default function Hero() {
               <h5>Average Rating</h5>
               <p className="box-title">
                 <span className="number text-theme">
-                  <span className="counter-number">50</span>k
+                  <span className="counter-number">1</span>k
                 </span>
                 <span className="plus text-theme">+</span> new review
               </p>

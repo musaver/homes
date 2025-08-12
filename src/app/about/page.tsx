@@ -175,7 +175,7 @@ export default function About() {
 
     <Testimonials />
 
-    <div className="space-bottom overflow-hidden">
+    <div className="space-bottom overflow-hidden d-none">
         <div className="container">
             <div className="row">
                 <div className="brand-bg-wrap style-2">
