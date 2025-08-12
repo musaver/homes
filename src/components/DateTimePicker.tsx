@@ -9,8 +9,19 @@ interface DateTimePickerProps {
   selectedTime: string;
 }
 
+interface SlotAvailability {
+  availableSlots: string[];
+  bookedSlots: string[];
+  loading: boolean;
+}
+
 export default function DateTimePicker({ onDateChange, onTimeChange, selectedDate, selectedTime }: DateTimePickerProps) {
   const [minDate, setMinDate] = useState('');
+  const [slotAvailability, setSlotAvailability] = useState<SlotAvailability>({
+    availableSlots: [],
+    bookedSlots: [],
+    loading: false
+  });
 
   useEffect(() => {
     // Set minimum date to today
@@ -20,6 +31,65 @@ export default function DateTimePicker({ onDateChange, onTimeChange, selectedDat
     const dd = String(today.getDate()).padStart(2, '0');
     setMinDate(`${yyyy}-${mm}-${dd}`);
   }, []);
+
+  // Fetch slot availability when date changes
+  useEffect(() => {
+    if (selectedDate) {
+      fetchSlotAvailability(selectedDate);
+    } else {
+      // Reset availability when no date is selected
+      setSlotAvailability({
+        availableSlots: [],
+        bookedSlots: [],
+        loading: false
+      });
+    }
+  }, [selectedDate]);
+
+  // Clear selected time if it becomes unavailable
+  useEffect(() => {
+    if (selectedTime && selectedDate && slotAvailability.availableSlots.length > 0) {
+      if (!slotAvailability.availableSlots.includes(selectedTime)) {
+        onTimeChange('');
+      }
+    }
+  }, [selectedTime, selectedDate, slotAvailability.availableSlots, onTimeChange]);
+
+  const fetchSlotAvailability = async (date: string) => {
+    setSlotAvailability(prev => ({ ...prev, loading: true }));
+    
+    try {
+      const response = await fetch(`/api/booking/availability?date=${date}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSlotAvailability({
+          availableSlots: data.availableSlots || [],
+          bookedSlots: data.bookedSlots || [],
+          loading: false
+        });
+
+        // If selected time is no longer available, clear it
+        if (selectedTime && !data.availableSlots.includes(selectedTime)) {
+          onTimeChange('');
+        }
+      } else {
+        console.error('Failed to fetch slot availability');
+        setSlotAvailability({
+          availableSlots: [],
+          bookedSlots: [],
+          loading: false
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching slot availability:', error);
+      setSlotAvailability({
+        availableSlots: [],
+        bookedSlots: [],
+        loading: false
+      });
+    }
+  };
 
   const timeSlots = [
     { value: "09:00", label: "9:00 AM" },
@@ -65,23 +135,69 @@ export default function DateTimePicker({ onDateChange, onTimeChange, selectedDat
         <label className="form-label">
           Service Time <span className="text-danger">*</span>
         </label>
-        <select
-          className="form-control"
-          value={selectedTime}
-          onChange={(e) => onTimeChange(e.target.value)}
-          required
-        >
-          <option value="">Select time slot</option>
-          {timeSlots.map((slot) => (
-            <option key={slot.value} value={slot.value}>
-              {slot.label}
-            </option>
-          ))}
-        </select>
-        <small className="text-muted">
-          <i className="fas fa-clock me-1"></i>
-          Available from 9:00 AM to 5:00 PM
-        </small>
+        <div className="position-relative">
+          <select
+            className="form-control"
+            value={selectedTime}
+            onChange={(e) => onTimeChange(e.target.value)}
+            required
+            disabled={!selectedDate || slotAvailability.loading}
+          >
+          <option value="">
+            {!selectedDate ? 'Select a date first' : 
+             slotAvailability.loading ? 'Loading slots...' : 
+             'Select time slot'}
+          </option>
+          {timeSlots.map((slot) => {
+            const isBooked = slotAvailability.bookedSlots.includes(slot.value);
+            const isAvailable = !selectedDate || slotAvailability.availableSlots.includes(slot.value);
+            
+            return (
+              <option 
+                key={slot.value} 
+                value={slot.value}
+                disabled={isBooked || !isAvailable}
+              >
+                {slot.label} {isBooked ? '(Booked)' : ''}
+              </option>
+            );
+          })}
+          </select>
+          {slotAvailability.loading && (
+            <div className="position-absolute top-50 end-0 translate-middle-y me-3">
+              <div className="spinner-border spinner-border-sm text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="d-flex justify-content-between align-items-center">
+          <small className="text-muted">
+            <i className="fas fa-clock me-1"></i>
+            {selectedDate && !slotAvailability.loading ? (
+              <>
+                Available from 9:00 AM to 5:00 PM • 
+                <span className="text-success"> {slotAvailability.availableSlots.length} available</span>
+                {slotAvailability.bookedSlots.length > 0 && (
+                  <span className="text-danger"> • {slotAvailability.bookedSlots.length} booked</span>
+                )}
+              </>
+            ) : (
+              'Available from 9:00 AM to 5:00 PM'
+            )}
+          </small>
+          {selectedDate && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary ms-2"
+              onClick={() => fetchSlotAvailability(selectedDate)}
+              disabled={slotAvailability.loading}
+              title="Refresh slot availability"
+            >
+              <i className={`fas fa-sync-alt ${slotAvailability.loading ? 'fa-spin' : ''}`}></i>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

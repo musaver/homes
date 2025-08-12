@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 import { orders, orderItems, user } from '@/lib/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { sendOrderConfirmationEmail } from '@/lib/email';
-import { eq } from 'drizzle-orm';
+import { eq, and, not } from 'drizzle-orm';
 
 export async function POST(req: Request) {
   try {
@@ -39,6 +39,38 @@ export async function POST(req: Request) {
         error: 'Missing required fields' 
       }, { status: 400 });
     }
+
+    // Check if the time slot is still available before creating the order
+    const existingBooking = await db
+      .select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+      })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.serviceDate, serviceDate),
+          eq(orders.serviceTime, serviceTime),
+          not(eq(orders.status, 'cancelled'))
+        )
+      )
+      .limit(1);
+
+    if (existingBooking.length > 0) {
+      console.log('❌ Time slot already booked:', {
+        serviceDate,
+        serviceTime,
+        conflictingOrder: existingBooking[0]
+      });
+      
+      return NextResponse.json({ 
+        error: 'This time slot has already been booked by another customer. Please select a different time slot.',
+        conflictingOrder: existingBooking[0].orderNumber
+      }, { status: 409 }); // 409 Conflict
+    }
+
+    console.log('✅ Time slot is available:', { serviceDate, serviceTime });
 
     // Update user profile with checkout data
     try {

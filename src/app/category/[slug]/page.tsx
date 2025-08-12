@@ -27,6 +27,7 @@ interface Category {
   slug: string;
   description: string;
   image: string;
+  bannerImage?: string;
 }
 
 interface ApiResponse {
@@ -59,6 +60,15 @@ export default function CategoryPage() {
               console.log('🔍 Frontend Debug - Normalized images:', normalized);
             });
           }
+          
+          // Debug: Log category banner information
+          console.log('🎨 Category Banner Debug:', {
+            categoryName: result.category.name,
+            bannerImage: result.category.bannerImage,
+            hasBanner: !!result.category.bannerImage,
+            willUseDynamic: !!result.category.bannerImage
+          });
+          
           setData(result);
         } else if (response.status === 404) {
           setError('Category not found');
@@ -77,6 +87,30 @@ export default function CategoryPage() {
       fetchCategoryProducts();
     }
   }, [params.slug]);
+
+  // Helper function to get the banner image URL
+  const getCategoryBannerImage = (category: Category): string => {
+    const defaultBanner = '/assets/img/bg/breadcrumb-bg.jpg';
+    
+    if (!category.bannerImage) {
+      return defaultBanner;
+    }
+    
+    // Handle both relative and absolute URLs
+    const bannerUrl = category.bannerImage.startsWith('http') 
+      ? category.bannerImage 
+      : category.bannerImage;
+    
+    console.log(`🎨 ${bannerUrl === defaultBanner ? 'Static' : 'Dynamic'} Banner for "${category.name}":`, {
+      categoryName: category.name,
+      bannerImage: category.bannerImage,
+      finalUrl: bannerUrl,
+      isDefault: bannerUrl === defaultBanner,
+      bannerType: bannerUrl === defaultBanner ? 'Static (Fallback)' : 'Dynamic (Custom)'
+    });
+    
+    return bannerUrl;
+  };
 
   // Use the same approach as the admin project for consistent image handling
   const getFirstProductImage = (imagesData: any): string | null => {
@@ -203,7 +237,12 @@ export default function CategoryPage() {
       
       
       {/* Breadcrumb Area */}
-      <div className="breadcumb-wrapper background-image shape-mockup-wrap" style={{backgroundImage: 'url(/assets/img/bg/breadcrumb-bg.jpg)'}}>
+      <div 
+        className="breadcumb-wrapper background-image shape-mockup-wrap" 
+        style={{
+          backgroundImage: `url(${getCategoryBannerImage(data.category)})`
+        }}
+      >
           <div className="breadcrumb-bottom-shape"><Image src="/assets/img/bg/breadcrumb-bottom.png" alt="shape" width={100} height={100}/></div>
           <div className="shape-mockup breadcrumb-left jump-reverse"><Image src="/assets/img/icon/breadcrumb-left.png" alt="shape" width={100} height={100}/></div>
           <div className="shape-mockup breadcrumb-right jump"><Image src="/assets/img/icon/breadcrumb-right.png" alt="shape" width={100} height={100}/></div>
@@ -282,6 +321,65 @@ export default function CategoryPage() {
       </section>
 
       <Footer />
+      
+      <style jsx>{`
+        .breadcumb-wrapper.background-image {
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+          min-height: 200px;
+          position: relative;
+        }
+        
+        /* Ensure the banner image covers the entire breadcrumb area */
+        .breadcumb-wrapper.background-image::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.3); /* Lighter overlay for better text readability */
+          z-index: 1;
+        }
+        
+        /* Ensure content stays above the overlay */
+        .breadcumb-content,
+        .breadcrumb-bottom-shape,
+        .shape-mockup {
+          position: absolute;
+          z-index: 2;
+        }
+        
+        /* Fallback styling in case image fails to load */
+        .breadcumb-wrapper.background-image {
+          background-color: #1a1a1a; /* Dark fallback color */
+        }
+        
+        /* Better positioning for breadcrumb bottom shape */
+        .breadcrumb-bottom-shape {
+          position: absolute;
+          bottom: -3px;
+          left: 0;
+          right: 0;
+          z-index: 3;
+          width: 100%;
+          height: auto;
+        }
+        
+        .breadcrumb-bottom-shape img {
+          width: 100%;
+          height: auto;
+          display: block;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+          .breadcumb-wrapper.background-image {
+            min-height: 180px;
+          }
+        }
+      `}</style>
     </>
   );
 } 

@@ -242,7 +242,17 @@ export default function CheckoutPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to place order');
+        // Handle slot conflict specifically
+        if (response.status === 409) {
+          setError(`${data.error} Please refresh and select a new time slot.`);
+          // Optionally refresh the time slots for the selected date
+          setTimeout(() => {
+            window.location.reload();
+          }, 3000);
+        } else {
+          throw new Error(data.error || 'Failed to place order');
+        }
+        return;
       }
 
       // Clear cart and show success

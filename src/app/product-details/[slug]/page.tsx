@@ -12,6 +12,7 @@ import { normalizeVariationAttributes } from '../../../utils/jsonUtils';
 import { addToCart, clearCart, type CartItem } from '../../../utils/cart';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import ConsultationBooking from '@/components/ConsultationBooking';
 import { calculateTaxes, fetchTaxSettings, formatTaxAmount } from '../../../utils/taxUtils';
 import { storeLastVisitedPage } from '@/utils/navigation';
 
@@ -92,6 +93,7 @@ interface ProductData {
   createdAt: string;
   updatedAt: string;
   categoryName?: string;
+  categorySlug?: string;
   addons?: ProductAddon[];
 }
 
@@ -961,67 +963,79 @@ export default function ProjectDetailsPage() {
                                 />
                             
                             
-                            {/* Product Variations - After Description */}
-                            {product.productType === 'variable' && (
+                            {/* Check if this is a home-renovation category product */}
+                            {product.categorySlug === 'home-renovation' ? (
+                              /* Show consultation booking form for home renovation products */
+                              <ConsultationBooking 
+                                productName={product.name}
+                                productId={product.id}
+                              />
+                            ) : (
+                              /* Show regular product variations, addons, and checkout for other categories */
+                              <>
+                                {/* Product Variations - After Description */}
+                                {product.productType === 'variable' && (
 
-                            <VariationSelector
-                              variationAttributes={variationAttributes}
-                              productType={product.productType}
-                              basePrice={product.price}
-                              product={product}
-                              onPriceChange={setVariationPrice}
-                              onVariationComplete={setVariationComplete}
-                              onSelectionChange={setSelectedVariations}
-                              onAddToCart={handleAddToCart}
-                            />
+                                <VariationSelector
+                                  variationAttributes={variationAttributes}
+                                  productType={product.productType}
+                                  basePrice={product.price}
+                                  product={product}
+                                  onPriceChange={setVariationPrice}
+                                  onVariationComplete={setVariationComplete}
+                                  onSelectionChange={setSelectedVariations}
+                                  onAddToCart={handleAddToCart}
+                                />
 
-                            )}
-
-                            {/* Product Addons - After Description - Show for all product types */}
-                            {product.addons && product.addons.length > 0 && (
-
-                            <GroupedAddonsSelector
-                              addons={product.addons || []}
-                              productType={product.productType}
-                              basePrice={product.price}
-                              onCheckoutReady={setCheckoutReady}
-                              onSelectionChange={setSelectedAddons}
-                              onAddToCart={handleAddToCart}
-                              onPriceChange={setAddonPrice}
-                            />
-
-                            )}
-
-                            {/* Universal Book Now button - handles all product types */}
-                            <div className="universal-checkout">
-                              <button
-                                type="button"
-                                className="th-btn"
-                                onClick={handleAddToCart}
-                                disabled={
-                                  addingToCart || 
-                                  (product.productType === 'variable' && !variationComplete) ||
-                                  (product.productType === 'group' && !checkoutReady)
-                                }
-                              >
-                                {addingToCart ? (
-                                  <>
-                                    <LoadingSpinner size="small" color="#ffffff" className="me-2" />
-                                    Adding to Cart...
-                                  </>
-                                ) : (
-                                  <>
-                                    Book Now
-                                  </>
                                 )}
-                              </button>
-                            </div>
 
-                            {!session && (
-                            <p className="text-muted small mt-2">
-                            <i className="fas fa-info-circle me-1"></i>
-                            You'll be redirected to login first
-                            </p>
+                                {/* Product Addons - After Description - Show for all product types */}
+                                {product.addons && product.addons.length > 0 && (
+
+                                <GroupedAddonsSelector
+                                  addons={product.addons || []}
+                                  productType={product.productType}
+                                  basePrice={product.price}
+                                  onCheckoutReady={setCheckoutReady}
+                                  onSelectionChange={setSelectedAddons}
+                                  onAddToCart={handleAddToCart}
+                                  onPriceChange={setAddonPrice}
+                                />
+
+                                )}
+
+                                {/* Universal Book Now button - handles all product types */}
+                                <div className="universal-checkout">
+                                  <button
+                                    type="button"
+                                    className="th-btn"
+                                    onClick={handleAddToCart}
+                                    disabled={
+                                      addingToCart || 
+                                      (product.productType === 'variable' && !variationComplete) ||
+                                      (product.productType === 'group' && !checkoutReady)
+                                    }
+                                  >
+                                    {addingToCart ? (
+                                      <>
+                                        <LoadingSpinner size="small" color="#ffffff" className="me-2" />
+                                        Adding to Cart...
+                                      </>
+                                    ) : (
+                                      <>
+                                        Book Now
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+
+                                {!session && (
+                                <p className="text-muted small mt-2">
+                                <i className="fas fa-info-circle me-1"></i>
+                                You'll be redirected to login first
+                                </p>
+                                )}
+                              </>
                             )}
                             
                             
@@ -1030,133 +1044,202 @@ export default function ProjectDetailsPage() {
                     </div>
                     <div className="col-xxl-4 col-lg-4">
                       <aside className="sidebar-area">
-                        <div className="order-summary-widget">
-                          <h4 className="summary-title">Summary</h4>
-                          
-                          <div className="product-info">
-                            <h5 className="product-name">{product.name}</h5>
+                        {product.categorySlug === 'home-renovation' ? (
+                          /* Consultation Information Sidebar */
+                          <div className="consultation-info-widget">
+                            <h4 className="summary-title">Consultation Details</h4>
                             
-                            {/* Show selected variations */}
-                            {product.productType === 'variable' && Object.values(selectedVariations).some(v => v) && (
-                              <div className="variations-display">
-                                {Object.entries(selectedVariations)
-                                  .filter(([, value]) => value)
-                                  .map(([key, value], index, array) => (
-                                    <span key={key} className="variation-item">
-                                      {key}: {value}
-                                      {index < array.length - 1 && '    '}
-                                    </span>
-                                  ))}
+                            <div className="consultation-benefits">
+                              <div className="benefit-item">
+                                <i className="fas fa-check-circle text-success me-2"></i>
+                                <span>Free consultation call</span>
                               </div>
-                            )}
+                              <div className="benefit-item">
+                                <i className="fas fa-clock text-primary me-2"></i>
+                                <span>30-45 minute session</span>
+                              </div>
+                              <div className="benefit-item">
+                                <i className="fas fa-user-tie text-info me-2"></i>
+                                <span>Expert specialist</span>
+                              </div>
+                              <div className="benefit-item">
+                                <i className="fas fa-calculator text-warning me-2"></i>
+                                <span>Free quote & estimate</span>
+                              </div>
+                              <div className="benefit-item">
+                                <i className="fas fa-calendar-alt text-secondary me-2"></i>
+                                <span>Flexible scheduling</span>
+                              </div>
+                            </div>
+
+                            <hr className="summary-divider" />
+
+                            <div className="consultation-process">
+                              <h6 className="section-title">How it works:</h6>
+                              <div className="process-steps">
+                                <div className="process-step">
+                                  <div className="step-number">1</div>
+                                  <div className="step-text">Book your free consultation</div>
+                                </div>
+                                <div className="process-step">
+                                  <div className="step-number">2</div>
+                                  <div className="step-text">Our expert will call you</div>
+                                </div>
+                                <div className="process-step">
+                                  <div className="step-number">3</div>
+                                  <div className="step-text">Get personalized recommendations</div>
+                                </div>
+                                <div className="process-step">
+                                  <div className="step-number">4</div>
+                                  <div className="step-text">Receive detailed quote</div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <hr className="summary-divider" />
+
+                            <div className="contact-info">
+                              <h6 className="section-title">Need help?</h6>
+                              <div className="contact-item">
+                                <i className="fas fa-phone text-success me-2"></i>
+                                <span>Call us: +971 50 125 8142</span>
+                              </div>
+                              <div className="contact-item">
+                                <i className="fas fa-envelope text-primary me-2"></i>
+                                <span>Email: info@quickrepairhomes.com</span>
+                              </div>
+                            </div>
                           </div>
+                        ) : (
+                          /* Regular Product Summary Sidebar */
+                          <div className="order-summary-widget">
+                            <h4 className="summary-title">Summary</h4>
+                            
+                            <div className="product-info">
+                              <h5 className="product-name">{product.name}</h5>
+                              
+                              {/* Show selected variations */}
+                              {product.productType === 'variable' && Object.values(selectedVariations).some(v => v) && (
+                                <div className="variations-display">
+                                  {Object.entries(selectedVariations)
+                                    .filter(([, value]) => value)
+                                    .map(([key, value], index, array) => (
+                                      <span key={key} className="variation-item">
+                                        {key}: {value}
+                                        {index < array.length - 1 && '    '}
+                                      </span>
+                                    ))}
+                                </div>
+                              )}
+                            </div>
 
-                          {/* Show selected addons for reference only */}
-                          {selectedAddons && selectedAddons.length > 0 && (
-                            <div className="addons-section">
-                              <h6 className="section-title">Selected Add-ons</h6>
-                              <div className="addons-list">
-                                {selectedAddons.map((addon, index) => (
-                                  <div key={index} className="addon-item">
-                                    <div className="addon-info">
-                                      <span className="addon-name">{addon.title}</span>
-                                      {addon.quantity > 1 && (
-                                        <span className="addon-quantity"> × {addon.quantity}</span>
-                                      )}
+                            {/* Show selected addons for reference only */}
+                            {selectedAddons && selectedAddons.length > 0 && (
+                              <div className="addons-section">
+                                <h6 className="section-title">Selected Add-ons</h6>
+                                <div className="addons-list">
+                                  {selectedAddons.map((addon, index) => (
+                                    <div key={index} className="addon-item">
+                                      <div className="addon-info">
+                                        <span className="addon-name">{addon.title}</span>
+                                        {addon.quantity > 1 && (
+                                          <span className="addon-quantity"> × {addon.quantity}</span>
+                                        )}
+                                      </div>
+                                      <div className="addon-note">
+                                        <span className="text-muted">Included</span>
+                                      </div>
                                     </div>
-                                    <div className="addon-note">
-                                      <span className="text-muted">Included</span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          <hr className="summary-divider" />
-
-                          <div className="total-section">
-                            {/* Base Price */}
-                            <div className="total-row">
-                              <span className="total-label">Base Price:</span>
-                              <span className="total-amount">
-                                <CurrencySymbol /> {basePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            </div>
-
-                            {/* Variation Price Difference */}
-                            {variationPrice !== 0 && (
-                              <div className="total-row">
-                                <span className="total-label">Variation Adjustment:</span>
-                                <span className="total-amount">
-                                  <CurrencySymbol /> {variationPrice > 0 ? '+' : ''}{variationPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Addon Price */}
-                            {addonPrice > 0 && (
-                              <div className="total-row">
-                                <span className="total-label">Add-ons:</span>
-                                <span className="total-amount">
-                                  <CurrencySymbol /> +{addonPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Subtotal */}
-                            <div className="total-row subtotal-row">
-                              <span className="total-label">Subtotal:</span>
-                              <span className="total-amount">
-                                <CurrencySymbol /> {currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            </div>
-
-                            {/* VAT Tax */}
-                            {product?.taxable && taxSettings?.vatTax?.enabled && (
-                              <div className="total-row">
-                                <span className="total-label">
-                                  VAT ({taxSettings.vatTax.type === 'percentage' ? `${taxSettings.vatTax.value}%` : 'Fixed'}):
-                                </span>
-                                <span className="total-amount">
-                                  <CurrencySymbol /> {formatTaxAmount(taxCalculation.vatAmount)}
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Service Tax */}
-                            {product?.taxable && taxSettings?.serviceTax?.enabled && (
-                              <div className="total-row">
-                                <span className="total-label">
-                                  Service Tax ({taxSettings.serviceTax.type === 'percentage' ? `${taxSettings.serviceTax.value}%` : 'Fixed'}):
-                                </span>
-                                <span className="total-amount">
-                                  <CurrencySymbol /> {formatTaxAmount(taxCalculation.serviceAmount)}
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Total Tax Amount */}
-                            {product?.taxable && taxCalculation.totalTaxAmount > 0 && (
-                              <div className="total-row">
-                                <span className="total-label">Total Tax:</span>
-                                <span className="total-amount">
-                                  <CurrencySymbol /> {formatTaxAmount(taxCalculation.totalTaxAmount)}
-                                </span>
+                                  ))}
+                                </div>
                               </div>
                             )}
 
                             <hr className="summary-divider" />
 
-                            {/* Final Total */}
-                            <div className="total-row grand-total">
-                              <span className="total-label">Total Amount:</span>
-                              <span className="total-amount">
-                                <CurrencySymbol /> {formatTaxAmount(taxCalculation.finalAmount)}
-                              </span>
+                            <div className="total-section">
+                              {/* Base Price */}
+                              <div className="total-row">
+                                <span className="total-label">Base Price:</span>
+                                <span className="total-amount">
+                                  <CurrencySymbol /> {basePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+
+                              {/* Variation Price Difference */}
+                              {variationPrice !== 0 && (
+                                <div className="total-row">
+                                  <span className="total-label">Variation Adjustment:</span>
+                                  <span className="total-amount">
+                                    <CurrencySymbol /> {variationPrice > 0 ? '+' : ''}{variationPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Addon Price */}
+                              {addonPrice > 0 && (
+                                <div className="total-row">
+                                  <span className="total-label">Add-ons:</span>
+                                  <span className="total-amount">
+                                    <CurrencySymbol /> +{addonPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Subtotal */}
+                              <div className="total-row subtotal-row">
+                                <span className="total-label">Subtotal:</span>
+                                <span className="total-amount">
+                                  <CurrencySymbol /> {currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+
+                              {/* VAT Tax */}
+                              {product?.taxable && taxSettings?.vatTax?.enabled && (
+                                <div className="total-row">
+                                  <span className="total-label">
+                                    VAT ({taxSettings.vatTax.type === 'percentage' ? `${taxSettings.vatTax.value}%` : 'Fixed'}):
+                                  </span>
+                                  <span className="total-amount">
+                                    <CurrencySymbol /> {formatTaxAmount(taxCalculation.vatAmount)}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Service Tax */}
+                              {product?.taxable && taxSettings?.serviceTax?.enabled && (
+                                <div className="total-row">
+                                  <span className="total-label">
+                                    Service Tax ({taxSettings.serviceTax.type === 'percentage' ? `${taxSettings.serviceTax.value}%` : 'Fixed'}):
+                                  </span>
+                                  <span className="total-amount">
+                                    <CurrencySymbol /> {formatTaxAmount(taxCalculation.serviceAmount)}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Total Tax Amount */}
+                              {product?.taxable && taxCalculation.totalTaxAmount > 0 && (
+                                <div className="total-row">
+                                  <span className="total-label">Total Tax:</span>
+                                  <span className="total-amount">
+                                    <CurrencySymbol /> {formatTaxAmount(taxCalculation.totalTaxAmount)}
+                                  </span>
+                                </div>
+                              )}
+
+                              <hr className="summary-divider" />
+
+                              {/* Final Total */}
+                              <div className="total-row grand-total">
+                                <span className="total-label">Total Amount:</span>
+                                <span className="total-amount">
+                                  <CurrencySymbol /> {formatTaxAmount(taxCalculation.finalAmount)}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        )}
                       </aside>
                     </div>
                 </div>
@@ -1425,9 +1508,88 @@ export default function ProjectDetailsPage() {
           font-weight: 700;
         }
 
+        /* Consultation Sidebar Styles */
+        .consultation-info-widget {
+          background: #ffffff;
+          border-radius: 12px;
+          padding: 24px;
+          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+          border: 1px solid #e5e7eb;
+          margin-bottom: 2rem;
+        }
+
+        .consultation-benefits {
+          margin-bottom: 1rem;
+        }
+
+        .benefit-item {
+          display: flex;
+          align-items: center;
+          margin-bottom: 0.75rem;
+          font-size: 0.95rem;
+          color: #374151;
+        }
+
+        .benefit-item:last-child {
+          margin-bottom: 0;
+        }
+
+        .consultation-process {
+          margin-bottom: 1rem;
+        }
+
+        .process-steps {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .process-step {
+          display: flex;
+          align-items: center;
+          font-size: 0.9rem;
+          color: #374151;
+        }
+
+        .step-number {
+          width: 24px;
+          height: 24px;
+          background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+          color: white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 600;
+          font-size: 0.8rem;
+          margin-right: 0.75rem;
+          flex-shrink: 0;
+        }
+
+        .step-text {
+          flex: 1;
+        }
+
+        .contact-info {
+          margin-bottom: 0;
+        }
+
+        .contact-item {
+          display: flex;
+          align-items: center;
+          margin-bottom: 0.5rem;
+          font-size: 0.9rem;
+          color: #374151;
+        }
+
+        .contact-item:last-child {
+          margin-bottom: 0;
+        }
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
-          .order-summary-widget {
+          .order-summary-widget,
+          .consultation-info-widget {
             padding: 20px;
           }
           

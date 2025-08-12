@@ -304,7 +304,7 @@ export default function DetailedServices() {
             <div className="title-area text-center">
               <span className="sub-title justify-content-center">Our Services</span>
               <h2 className="sec-title">
-                The Services We Provide For
+                The Services We Provide For 
                 <span className="text-theme"> Our Customer</span>
               </h2>
             </div>
@@ -317,7 +317,7 @@ export default function DetailedServices() {
               <div 
                 className="swiper th-slider" 
                 id="service-slider1"
-                data-slider-options='{"breakpoints":{"0":{"slidesPerView":1},"576":{"slidesPerView":"1.5"},"768":{"slidesPerView":"2"},"992":{"slidesPerView":"2"},"1200":{"slidesPerView":"3"}}}'
+                data-slider-options='{"breakpoints":{"0":{"slidesPerView":"1.25"},"768":{"slidesPerView":"2"},"992":{"slidesPerView":"2"},"1200":{"slidesPerView":"3"}}}'
               >
                 <div className="swiper-wrapper">
                   {products.map((product, index) => (
